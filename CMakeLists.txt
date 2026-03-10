@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.0.0)
 project(LINE-MOD VERSION 0.1.0)
 
+set(CMAKE_C_COMPILER gcc-9)
+set(CMAKE_CXX_COMPILER g++-9)
+
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 
 include_directories(${CMAKE_SOURCE_DIR}/include/)
@@ -40,8 +43,6 @@ macro (add_executable _name)
 	target_include_directories(${_name}  PUBLIC ${OPENGL_INCLUDE_DIR})
 
 	#libfreenect2
-	set(CMAKE_PREFIX_PATH "~/freenect2/lib/cmake/freenect2/")
-	#set(freenect2_DIR ${HOME}/freenect2/lib/cmake/freenect2)
 	find_package(freenect2 REQUIRED)
 	target_link_libraries(${_name}  ${freenect2_LIBRARY})
 	target_include_directories(${_name}  PUBLIC ${freenect2_INCLUDE_DIR})
@@ -52,6 +53,7 @@ macro (add_executable _name)
 	target_include_directories(${_name}  PUBLIC ${GLEW_INCLUDE_DIRS})
 
 	# OpenCV
+	set(OpenCV_DIR /usr/local/lib/cmake/opencv4)
 	find_package(OpenCV REQUIRED)
 	target_link_libraries(${_name}  ${OpenCV_LIBRARIES})
 	target_include_directories(${_name}  PUBLIC ${OpenCV_INCLUDE_DIRS})

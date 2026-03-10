@@ -133,7 +133,7 @@ private:
 		{
 		}
 
-		Template(glm::vec3 tra, glm::qua<float> qua, cv::Rect bb, uint16_t med) :
+		Template(glm::vec3 tra, glm::quat<float> qua, cv::Rect bb, uint16_t med) :
 			translation(tra),
 			quaternions(qua),
 			boundingBox(std::move(bb)),
@@ -142,7 +142,7 @@ private:
 		}
 
 		glm::vec3 translation;
-		glm::qua<float> quaternions;
+		glm::quat<float> quaternions;
 		cv::Rect boundingBox;
 		uint16_t medianDepth;
 	};
@@ -195,16 +195,16 @@ private:
 	 * @param in_cameraPosition 
 	 * @param in_inplaneRot 
 	 */
-	void calculateTemplatePose(glm::vec3& in_translation, glm::qua<float>& in_quats,
+	void calculateTemplatePose(glm::vec3& in_translation, glm::quat<float>& in_quats,
 	                           glm::vec3& in_cameraPosition, int16_t& in_inplaneRot);
 
 	/**
 	 * @brief The function converts the rotation from the opengl coordinate system to the opencv one
 	 * 
 	 * @param in_viewMat 
-	 * @return glm::qua<float> 
+	 * @return glm::quat<float> 
 	 */						   
-	glm::qua<float> openglCoordinatesystem2opencv(glm::mat4& in_viewMat);
+	glm::quat<float> openglCoordinatesystem2opencv(glm::mat4& in_viewMat);
 
 	/**
 	 * @brief Function that applies color and depth checks to the matches until a set number of matches pass
@@ -256,7 +256,7 @@ private:
 	 * @param[out] in_quats Quaternions of the object
 	 */
 	void calcRotation(uint32_t const& in_numMatch, glm::vec3 const& in_position,
-	                  glm::qua<float>& in_quats);
+	                  glm::quat<float>& in_quats);
 
 	/**
 	 * @brief Calculate the match origin position in pixel
