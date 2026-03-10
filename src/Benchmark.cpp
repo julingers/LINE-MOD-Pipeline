@@ -165,7 +165,7 @@ cv::Mat Benchmark::renderPose(OpenGLRender* in_opengl, ObjectPose const& in_pose
 glm::mat4 Benchmark::calculateViewMat(ObjectPose const& in_pose)
 {
 	glm::vec3 eul = eulerAngles(in_pose.quaternions);
-	glm::quat<float> quats(glm::vec3(eul.x - M_PI, -eul.y, -eul.z));
+	glm::quat quats(glm::vec3(eul.x - M_PI, -eul.y, -eul.z));
 	return glm::toMat4(quats);
 }
 
@@ -236,9 +236,9 @@ void Benchmark::readGroundTruthLinemodDataset()
 	fileStreamRotation.close();
 	glm::mat3 rotMatGlm;
 	fromCV2GLM(rotMat, &rotMatGlm);
-	glm::quat<float> quaternions = quat_cast(rotMatGlm);
+	glm::quat quaternions = quat_cast(rotMatGlm);
 	glm::vec3 eul = eulerAngles(quaternions);
-	glm::quat<float> adjustedQuats(glm::vec3(eul.x - M_PI / 2, eul.y, eul.z));
+	glm::quat adjustedQuats(glm::vec3(eul.x - M_PI / 2, eul.y, eul.z));
 	// converting to the correct coordinate system
 	translation *= 10; //convert to millimeters
 	groundTruth = {translation, adjustedQuats};

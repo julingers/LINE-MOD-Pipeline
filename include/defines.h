@@ -37,10 +37,10 @@ struct TemplatePosition
 struct ObjectPose
 {
 	ObjectPose();
-	ObjectPose(glm::vec3 tra, glm::quat<float> qua);
-	ObjectPose(glm::vec3 tra, glm::quat<float> qua, cv::Rect bb);
+	ObjectPose(glm::vec3 tra, glm::quat qua);
+	ObjectPose(glm::vec3 tra, glm::quat qua, cv::Rect bb);
 	glm::vec3 translation;
-	glm::quat<float> quaternions;
+	glm::quat quaternions;
 	cv::Rect boundingBox;
 };
 

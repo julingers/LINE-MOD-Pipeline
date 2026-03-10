@@ -100,7 +100,7 @@ bool HighLevelLineMOD::addTemplate(std::vector<cv::Mat>& in_images, const std::s
 			return false;
 		}
 		glm::vec3 translation;
-		glm::quat<float> quaternions;
+		glm::quat quaternions;
 		uint16_t medianDepth = medianMat(depthRotated, boundingBox, 5);
 		int16_t currentInplaneAngle = -(lowerAngleStop + q * angleStep);
 		calculateTemplatePose(translation, quaternions, in_cameraPosition, currentInplaneAngle);
@@ -348,7 +348,7 @@ uint16_t HighLevelLineMOD::medianMat(cv::Mat const& in_mat, cv::Rect& in_bb,
 	return vecFromMat[vecFromMat.size() / in_medianPosition];
 }
 
-void HighLevelLineMOD::calculateTemplatePose(glm::vec3& in_translation, glm::quat<float>& in_quats,
+void HighLevelLineMOD::calculateTemplatePose(glm::vec3& in_translation, glm::quat& in_quats,
                                              glm::vec3& in_cameraPosition, int16_t& in_inplaneRot)
 {
 	in_translation.x = 0.0f;
@@ -368,12 +368,12 @@ void HighLevelLineMOD::calculateTemplatePose(glm::vec3& in_translation, glm::qua
 }
 
 
-glm::quat<float> HighLevelLineMOD::openglCoordinatesystem2opencv(glm::mat4& in_viewMat)
+glm::quat HighLevelLineMOD::openglCoordinatesystem2opencv(glm::mat4& in_viewMat)
 {
 	glm::mat4 coordinateTransform(1.0f);
 	coordinateTransform[1][1] = -1.0f;
 	coordinateTransform[2][2] = -1.0f;
-	glm::quat<float> tempQuat = toQuat(
+	glm::quat tempQuat = toQuat(
 		glm::transpose(glm::transpose(in_viewMat) * coordinateTransform));
 	return tempQuat;
 }
@@ -460,7 +460,7 @@ void HighLevelLineMOD::updateTranslationAndCreateObjectPose(uint32_t const& in_n
                                                             std::vector<ObjectPose>& in_objPoses)
 {
 	glm::vec3 updatedTanslation;
-	glm::quat<float> updatedRotation;
+	glm::quat updatedRotation;
 	calcPosition(in_numMatch, updatedTanslation, tempDepth);
 	calcRotation(in_numMatch, updatedTanslation, updatedRotation);
 	cv::Rect boundingBox(
@@ -486,7 +486,7 @@ void HighLevelLineMOD::calcPosition(uint32_t const& in_numMatch, glm::vec3& in_p
 
 
 void HighLevelLineMOD::calcRotation(uint32_t const& in_numMatch, glm::vec3 const& in_position,
-                                    glm::quat<float>& in_quats)
+                                    glm::quat& in_quats)
 {
 	glm::mat4 adjustRotation = lookAt(glm::vec3(-in_position.x, -in_position.y, in_position.z),
 	                                  glm::vec3(0.f), up);
