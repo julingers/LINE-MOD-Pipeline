@@ -197,7 +197,6 @@ void OpenGLRender::setupOpenGL()
 
 void OpenGLRender::setupFramebuffer()
 {
-	std::cout << "hhhhhhhhhhhhh" << std::endl;
 	glGenFramebuffers(1, &fbo);
 	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 	unsigned int texture;
@@ -220,7 +219,6 @@ void OpenGLRender::setupFramebuffer()
 		std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
 	}
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	std::cout << "111111111111" << std::endl;
 }
 
 void OpenGLRender::setupShader()
