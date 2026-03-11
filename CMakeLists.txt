@@ -21,7 +21,7 @@ file(GLOB_RECURSE HEADER_FILES
 	${CMAKE_SOURCE_DIR}/include/*.hpp)
 
 find_package(SDL2 REQUIRED)
-find_package(glm REQUIRED)
+find_package(GLM REQUIRED)
 find_package(ASSIMP REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(freenect2 REQUIRED)
