@@ -179,6 +179,7 @@ void OpenGLRender::setupSDLWindow()
 
 void OpenGLRender::setupOpenGL()
 {
+	glewExperimental = GL_TRUE; 
 	GLenum errorMsg = glewInit();
 	if (errorMsg != GLEW_OK)
 	{
@@ -190,11 +191,13 @@ void OpenGLRender::setupOpenGL()
 		std::cout << "OpenGL successfully initiated. Version: " << glGetString(GL_VERSION) << std::
 			endl;
 	}
+	glGetError();
 	glEnable(GL_DEPTH_TEST);
 }
 
 void OpenGLRender::setupFramebuffer()
 {
+	std::cout << "hhhhhhhhhhhhh" << std::endl;
 	glGenFramebuffers(1, &fbo);
 	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 	unsigned int texture;
@@ -217,6 +220,7 @@ void OpenGLRender::setupFramebuffer()
 		std::cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
 	}
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	std::cout << "111111111111" << std::endl;
 }
 
 void OpenGLRender::setupShader()
