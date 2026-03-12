@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <opencv2/opencv.hpp>
@@ -15,6 +16,63 @@ struct DetectionResult {
   cv::Point position;
   cv::Rect boundingBox;
 };
+
+// 计算IoU
+float calculateIoU(const cv::Rect& a, const cv::Rect& b) {
+  int interX1 = std::max(a.x, b.x);
+  int interY1 = std::max(a.y, b.y);
+  int interX2 = std::min(a.x + a.width, b.x + b.width);
+  int interY2 = std::min(a.y + a.height, b.y + b.height);
+
+  if (interX2 < interX1 || interY2 < interY1) {
+    return 0.0f;
+  }
+
+  float interArea = (interX2 - interX1) * (interY2 - interY1);
+  float unionArea = a.area() + b.area() - interArea;
+
+  return interArea / unionArea;
+}
+
+// NMS过滤
+std::vector<DetectionResult> nmsFilter(std::vector<DetectionResult>& results,
+                                        float iouThreshold = 0.3f,
+                                        int maxResults = 10) {
+  if (results.empty()) {
+    return results;
+  }
+
+  // 按相似度降序排序
+  std::sort(results.begin(), results.end(),
+            [](const DetectionResult& a, const DetectionResult& b) {
+              return a.similarity > b.similarity;
+            });
+
+  std::vector<DetectionResult> filtered;
+  std::vector<bool> suppressed(results.size(), false);
+
+  for (size_t i = 0; i < results.size() && filtered.size() < (size_t)maxResults; i++) {
+    if (suppressed[i]) {
+      continue;
+    }
+
+    filtered.push_back(results[i]);
+
+    // 抑制与当前结果重叠度高的结果
+    for (size_t j = i + 1; j < results.size(); j++) {
+      if (suppressed[j]) {
+        continue;
+      }
+
+      float iou = calculateIoU(results[i].boundingBox, results[j].boundingBox);
+      if (iou > iouThreshold) {
+        suppressed[j] = true;
+      }
+    }
+  }
+
+  return filtered;
+}
 
 cv::Ptr<cv::linemod::Detector> loadDetector(const std::string& filename) {
   cv::Ptr<cv::linemod::Detector> detector =
@@ -199,6 +257,11 @@ void printUsage(const char* programName) {
   std::cout << "Options:" << std::endl;
   std::cout << "  -t <threshold>   Detection threshold (default: 80.0)"
             << std::endl;
+  std::cout << "  -i <iou>         IoU threshold for NMS (default: 0.3)"
+            << std::endl;
+  std::cout << "  -n <max>         Max number of results (default: 10)"
+            << std::endl;
+  std::cout << "  --no-nms         Disable NMS filtering" << std::endl;
   std::cout << "  -d               Use depth modality (default: true)"
             << std::endl;
   std::cout << "  -c               Color modality only (ignore depth)"
@@ -211,7 +274,7 @@ void printUsage(const char* programName) {
       << " linemod_templates.yml.gz benchmark/img0.png benchmark/depth0.png"
       << std::endl;
   std::cout << "  " << programName
-            << " -t 70 -c linemod_templates.yml benchmark/img0.png"
+            << " -t 70 -i 0.5 -n 5 linemod_templates.yml benchmark/img0.png"
             << std::endl;
 }
 
@@ -222,6 +285,9 @@ int main(int argc, char** argv) {
   std::string colorFile;
   std::string depthFile;
   float threshold = 80.0f;
+  float iouThreshold = 0.1f;
+  int maxResults = 1;
+  bool useNms = true;
   bool useDepth = true;
 
   int argIdx = 1;
@@ -234,6 +300,19 @@ int main(int argc, char** argv) {
       if (argIdx + 1 < argc) {
         threshold = std::stof(argv[++argIdx]);
       }
+      argIdx++;
+    } else if (arg == "-i") {
+      if (argIdx + 1 < argc) {
+        iouThreshold = std::stof(argv[++argIdx]);
+      }
+      argIdx++;
+    } else if (arg == "-n") {
+      if (argIdx + 1 < argc) {
+        maxResults = std::stoi(argv[++argIdx]);
+      }
+      argIdx++;
+    } else if (arg == "--no-nms") {
+      useNms = false;
       argIdx++;
     } else if (arg == "-c") {
       useDepth = false;
@@ -272,7 +351,11 @@ int main(int argc, char** argv) {
   }
   std::cout << "Threshold: " << threshold << std::endl;
   std::cout << "Use depth: " << (useDepth ? "yes" : "no") << std::endl;
-  std::cout << std::endl;
+  std::cout << "NMS: " << (useNms ? "enabled" : "disabled");
+  if (useNms) {
+    std::cout << " (IoU=" << iouThreshold << ", max=" << maxResults << ")";
+  }
+  std::cout << std::endl << std::endl;
 
   std::cout << "Loading detector..." << std::endl;
   cv::Ptr<cv::linemod::Detector> detector = loadDetector(templateFile);
@@ -314,6 +397,14 @@ int main(int argc, char** argv) {
 
   tm.stop();
   std::cout << "Detection time: " << tm.getTimeMilli() << " ms" << std::endl;
+
+  // 应用 NMS
+  if (useNms && !results.empty()) {
+    size_t beforeNms = results.size();
+    results = nmsFilter(results, iouThreshold, maxResults);
+    std::cout << "NMS: " << beforeNms << " -> " << results.size() << " results" << std::endl;
+  }
+
   std::cout << std::endl;
 
   if (!results.empty()) {
