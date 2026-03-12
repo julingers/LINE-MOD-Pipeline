@@ -40,7 +40,12 @@ int main()
 		imgs.push_back(depthImg);
 
 		std::vector<ObjectPose> objPose;
+
+		cv::TickMeter tm;
+		tm.start();
 		poseDetect.detect(imgs, "lagergehaeuse.ply", 1, objPose, true);
+		tm.stop();
+		std::cout << "Detection time: " << tm.getTimeMilli() << " ms" << std::endl;
 
 		counter++;
 	}

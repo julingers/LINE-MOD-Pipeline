@@ -628,7 +628,6 @@ int main(int argc, char** argv) {
   tm.stop();
   std::cout << "Detection time: " << tm.getTimeMilli() << " ms" << std::endl;
 
-  // 应用 NMS
   if (useNms && !results.empty()) {
     size_t beforeNms = results.size();
     results = nmsFilter(results, iouThreshold, maxResults);
