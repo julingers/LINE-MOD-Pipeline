@@ -14,10 +14,10 @@ struct CameraParams {
 
 // 模板位姿数据（与 linemod_tempPosFile.bin 格式一致）
 struct TemplatePose {
-  float tx, ty, tz;       // 平移
-  float qx, qy, qz, qw;   // 四元数旋转
-  int bbX, bbY, bbW, bbH; // 边界框
-  uint16_t medianDepth;   // 深度中值
+  float tx, ty, tz;        // 平移
+  float qx, qy, qz, qw;    // 四元数旋转
+  int bbX, bbY, bbW, bbH;  // 边界框
+  uint16_t medianDepth;    // 深度中值
 };
 
 // 检测结果
@@ -91,12 +91,14 @@ std::vector<DetectionResult> nmsFilter(std::vector<DetectionResult>& results,
 }
 
 // 读取相机参数
-CameraParams loadCameraParams(const std::string& filename = "linemod_settings.yml") {
+CameraParams loadCameraParams(
+    const std::string& filename = "linemod_settings.yml") {
   CameraParams params;
   cv::FileStorage fs(filename, cv::FileStorage::READ);
 
   if (!fs.isOpened()) {
-    std::cerr << "Warning: Cannot open settings file: " << filename << std::endl;
+    std::cerr << "Warning: Cannot open settings file: " << filename
+              << std::endl;
     std::cerr << "         Using default camera parameters" << std::endl;
     // 默认参数
     params.width = 640;
@@ -115,9 +117,8 @@ CameraParams loadCameraParams(const std::string& filename = "linemod_settings.ym
     fs.release();
   }
 
-  params.cameraMatrix = (cv::Mat1d(3, 3) << params.fx, 0, params.cx,
-                         0, params.fy, params.cy,
-                         0, 0, 1);
+  params.cameraMatrix = (cv::Mat1d(3, 3) << params.fx, 0, params.cx, 0,
+                         params.fy, params.cy, 0, 0, 1);
 
   std::cout << "Camera parameters: fx=" << params.fx << ", fy=" << params.fy
             << ", cx=" << params.cx << ", cy=" << params.cy << std::endl;
@@ -132,13 +133,15 @@ std::vector<std::vector<TemplatePose>> loadTemplatePoses(
 
   std::ifstream input(filename, std::ios::in | std::ios::binary);
   if (!input.is_open()) {
-    std::cerr << "Warning: Cannot open template pose file: " << filename << std::endl;
+    std::cerr << "Warning: Cannot open template pose file: " << filename
+              << std::endl;
     return modelTemplates;
   }
 
   uint32_t numTempVecs;
   input.read((char*)&numTempVecs, sizeof(uint32_t));
-  std::cout << "Loading " << numTempVecs << " classes of template poses" << std::endl;
+  std::cout << "Loading " << numTempVecs << " classes of template poses"
+            << std::endl;
 
   for (uint32_t i = 0; i < numTempVecs; i++) {
     std::vector<TemplatePose> templates;
@@ -151,7 +154,8 @@ std::vector<std::vector<TemplatePose>> loadTemplatePoses(
       templates.push_back(tp);
     }
     modelTemplates.push_back(templates);
-    std::cout << "  Class " << i << ": " << templates.size() << " templates" << std::endl;
+    std::cout << "  Class " << i << ": " << templates.size() << " templates"
+              << std::endl;
   }
 
   input.close();
@@ -163,27 +167,28 @@ cv::Mat quaternionToRotationMatrix(float qx, float qy, float qz, float qw) {
   cv::Mat R(3, 3, CV_32F);
 
   // 归一化
-  float norm = std::sqrt(qx*qx + qy*qy + qz*qz + qw*qw);
-  qx /= norm; qy /= norm; qz /= norm; qw /= norm;
+  float norm = std::sqrt(qx * qx + qy * qy + qz * qz + qw * qw);
+  qx /= norm;
+  qy /= norm;
+  qz /= norm;
+  qw /= norm;
 
-  R.at<float>(0, 0) = 1 - 2*(qy*qy + qz*qz);
-  R.at<float>(0, 1) = 2*(qx*qy - qz*qw);
-  R.at<float>(0, 2) = 2*(qx*qz + qy*qw);
-  R.at<float>(1, 0) = 2*(qx*qy + qz*qw);
-  R.at<float>(1, 1) = 1 - 2*(qx*qx + qz*qz);
-  R.at<float>(1, 2) = 2*(qy*qz - qx*qw);
-  R.at<float>(2, 0) = 2*(qx*qz - qy*qw);
-  R.at<float>(2, 1) = 2*(qy*qz + qx*qw);
-  R.at<float>(2, 2) = 1 - 2*(qx*qx + qy*qy);
+  R.at<float>(0, 0) = 1 - 2 * (qy * qy + qz * qz);
+  R.at<float>(0, 1) = 2 * (qx * qy - qz * qw);
+  R.at<float>(0, 2) = 2 * (qx * qz + qy * qw);
+  R.at<float>(1, 0) = 2 * (qx * qy + qz * qw);
+  R.at<float>(1, 1) = 1 - 2 * (qx * qx + qz * qz);
+  R.at<float>(1, 2) = 2 * (qy * qz - qx * qw);
+  R.at<float>(2, 0) = 2 * (qx * qz - qy * qw);
+  R.at<float>(2, 1) = 2 * (qy * qz + qx * qw);
+  R.at<float>(2, 2) = 1 - 2 * (qx * qx + qy * qy);
 
   return R;
 }
 
 // 计算最终位姿
-void computeFinalPose(DetectionResult& result,
-                      const TemplatePose& templatePose,
-                      const CameraParams& camParams,
-                      const cv::Mat& depthImg) {
+void computeFinalPose(DetectionResult& result, const TemplatePose& templatePose,
+                      const CameraParams& camParams, const cv::Mat& depthImg) {
   // 1. 获取模板的初始旋转
   cv::Mat templateRot = quaternionToRotationMatrix(
       templatePose.qx, templatePose.qy, templatePose.qz, templatePose.qw);
@@ -198,7 +203,8 @@ void computeFinalPose(DetectionResult& result,
     // 从深度图获取中心深度
     int centerZ = result.position.y + result.boundingBox.height / 2;
     int centerY = result.position.x + result.boundingBox.width / 2;
-    if (centerY >= 0 && centerY < depthImg.cols && centerZ >= 0 && centerZ < depthImg.rows) {
+    if (centerY >= 0 && centerY < depthImg.cols && centerZ >= 0 &&
+        centerZ < depthImg.rows) {
       uint16_t depthValue = depthImg.at<uint16_t>(centerZ, centerY);
       if (depthValue > 0) {
         depth = depthValue;
@@ -209,10 +215,12 @@ void computeFinalPose(DetectionResult& result,
   // 4. 计算到图像中心的像素距离
   float offsetX = pixelX - camParams.width / 2;
   float offsetY = pixelY - camParams.height / 2;
-  float pixelDist = std::sqrt(offsetX*offsetX + offsetY*offsetY);
+  float pixelDist = std::sqrt(offsetX * offsetX + offsetY * offsetY);
 
   // 5. 计算真实的 Z 值（考虑透视）
-  float trueZ = std::sqrt(depth*depth - pixelDist*pixelDist * (depth/camParams.fy) * (depth/camParams.fy));
+  float trueZ =
+      std::sqrt(depth * depth - pixelDist * pixelDist * (depth / camParams.fy) *
+                                    (depth / camParams.fy));
   if (std::isnan(trueZ) || trueZ < 0) trueZ = depth;
 
   // 6. 计算 3D 平移
@@ -230,12 +238,13 @@ void computeFinalPose(DetectionResult& result,
 
 // 绘制坐标轴
 void drawCoordinateAxis(cv::Mat& image, const CameraParams& camParams,
-                        const DetectionResult& result, float axisLength = 50.0f) {
+                        const DetectionResult& result,
+                        float axisLength = 50.0f) {
   std::vector<cv::Point3f> axisPoints;
-  axisPoints.push_back(cv::Point3f(0, 0, 0));                      // 原点
-  axisPoints.push_back(cv::Point3f(axisLength, 0, 0));            // X轴 (红)
-  axisPoints.push_back(cv::Point3f(0, axisLength, 0));            // Y轴 (绿)
-  axisPoints.push_back(cv::Point3f(0, 0, axisLength));            // Z轴 (蓝)
+  axisPoints.push_back(cv::Point3f(0, 0, 0));           // 原点
+  axisPoints.push_back(cv::Point3f(axisLength, 0, 0));  // X轴 (红)
+  axisPoints.push_back(cv::Point3f(0, axisLength, 0));  // Y轴 (绿)
+  axisPoints.push_back(cv::Point3f(0, 0, axisLength));  // Z轴 (蓝)
 
   // 旋转向量
   cv::Mat rvec;
@@ -247,13 +256,16 @@ void drawCoordinateAxis(cv::Mat& image, const CameraParams& camParams,
 
   // 投影到2D
   std::vector<cv::Point2f> projectedPoints;
-  cv::projectPoints(axisPoints, rvec, tvec, camParams.cameraMatrix,
-                    cv::Mat(), projectedPoints);
+  cv::projectPoints(axisPoints, rvec, tvec, camParams.cameraMatrix, cv::Mat(),
+                    projectedPoints);
 
   // 绘制坐标轴
-  cv::line(image, projectedPoints[0], projectedPoints[1], cv::Scalar(0, 0, 255), 2);  // X - 红
-  cv::line(image, projectedPoints[0], projectedPoints[2], cv::Scalar(0, 255, 0), 2);  // Y - 绿
-  cv::line(image, projectedPoints[0], projectedPoints[3], cv::Scalar(255, 0, 0), 2);  // Z - 蓝
+  cv::line(image, projectedPoints[0], projectedPoints[1], cv::Scalar(0, 0, 255),
+           2);  // X - 红
+  cv::line(image, projectedPoints[0], projectedPoints[2], cv::Scalar(0, 255, 0),
+           2);  // Y - 绿
+  cv::line(image, projectedPoints[0], projectedPoints[3], cv::Scalar(255, 0, 0),
+           2);  // Z - 蓝
 }
 
 cv::Ptr<cv::linemod::Detector> loadDetector(const std::string& filename) {
@@ -307,13 +319,12 @@ cv::Ptr<cv::linemod::Detector> loadDetector(const std::string& filename) {
   return detector;
 }
 
-std::vector<DetectionResult> detect(cv::Ptr<cv::linemod::Detector>& detector,
-                                    const cv::Mat& colorImg,
-                                    const cv::Mat& depthImg,
-                                    const std::vector<std::vector<TemplatePose>>& templatePoses,
-                                    const CameraParams& camParams,
-                                    float threshold = 80.0f,
-                                    bool useDepth = true) {
+std::vector<DetectionResult> detect(
+    cv::Ptr<cv::linemod::Detector>& detector, const cv::Mat& colorImg,
+    const cv::Mat& depthImg,
+    const std::vector<std::vector<TemplatePose>>& templatePoses,
+    const CameraParams& camParams, float threshold = 80.0f,
+    bool useDepth = true) {
   std::vector<DetectionResult> results;
 
   int numModalities = detector->getModalities().size();
@@ -443,10 +454,7 @@ void drawResults(cv::Mat& image, cv::Ptr<cv::linemod::Detector>& detector,
     // 绘制标签（包含位姿信息）
     std::string label = result.classId + " (T" +
                         std::to_string(result.templateId) + ", S" +
-                        std::to_string((int)result.similarity) + ") [" +
-                        std::to_string((int)result.translation[0]) + ", " +
-                        std::to_string((int)result.translation[1]) + ", " +
-                        std::to_string((int)result.translation[2]) + "]mm";
+                        std::to_string((int)result.similarity) + ")";
 
     int baseline = 0;
     cv::Size textSize =
@@ -614,7 +622,8 @@ int main(int argc, char** argv) {
   tm.start();
 
   std::vector<DetectionResult> results =
-      detect(detector, colorImg, depthImg, templatePoses, camParams, threshold, useDepth);
+      detect(detector, colorImg, depthImg, templatePoses, camParams, threshold,
+             useDepth);
 
   tm.stop();
   std::cout << "Detection time: " << tm.getTimeMilli() << " ms" << std::endl;
@@ -637,10 +646,13 @@ int main(int argc, char** argv) {
       std::cout << "[" << i << "] Class: " << r.classId
                 << ", Template: " << r.templateId
                 << ", Similarity: " << r.similarity << std::endl;
-      std::cout << "    Position: (" << r.position.x << ", " << r.position.y << ")"
-                << ", BBox: " << r.boundingBox.width << "x" << r.boundingBox.height << std::endl;
+      std::cout << "    Position: (" << r.position.x << ", " << r.position.y
+                << ")"
+                << ", BBox: " << r.boundingBox.width << "x"
+                << r.boundingBox.height << std::endl;
       std::cout << "    Translation (mm): [" << r.translation[0] << ", "
-                << r.translation[1] << ", " << r.translation[2] << "]" << std::endl;
+                << r.translation[1] << ", " << r.translation[2] << "]"
+                << std::endl;
     }
     std::cout << std::endl;
   } else {
