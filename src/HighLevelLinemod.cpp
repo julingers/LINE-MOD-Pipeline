@@ -66,7 +66,7 @@ uint32_t HighLevelLineMOD::getNumTemplates()
 }
 
 bool HighLevelLineMOD::addTemplate(std::vector<cv::Mat>& in_images, const std::string& in_modelName,
-                                   glm::vec3 in_cameraPosition)
+                                   glm::vec3 in_cameraPosition, int* image_idx)
 {
 	cv::Mat mask;
 	cv::Mat maskRotated;
@@ -78,11 +78,22 @@ bool HighLevelLineMOD::addTemplate(std::vector<cv::Mat>& in_images, const std::s
 	cv::threshold(in_images[1], mask, 1, 65535, cv::THRESH_BINARY);
 	mask.convertTo(mask, CV_8UC1);
 
+	// 对每张渲染图像进行面内旋转（旋转角度数 = (45 - (-45)) / 10 + 1 = 10 个
+	// 旋转角度序列: -45°, -35°, -25°, -15°, -5°, 5°, 15°, 25°, 35°, 45°）
+	int cnt = 0;
 	for (size_t q = 0; q < inPlaneRotationMat.size(); q++)
 	{
 		cv::warpAffine(mask, maskRotated, inPlaneRotationMat[q], maskRotated.size());
 		cv::warpAffine(colorToBinary, colorRotated, inPlaneRotationMat[q], colorToBinary.size());
 		cv::warpAffine(in_images[1], depthRotated, inPlaneRotationMat[q], in_images[1].size());
+		if (image_idx != nullptr)
+		{
+			cv::imwrite("/mnt/hgfs/data/develop/linemod/render_images/color" + std::to_string(*image_idx) + "_" +
+			            std::to_string(cnt) + ".bmp", colorRotated);
+			cv::imwrite("/mnt/hgfs/data/develop/linemod/render_images/depth" + std::to_string(*image_idx) + "_" +
+			            std::to_string(cnt) + ".bmp", depthRotated);
+		}
+		cnt++;
 		templateImgs.push_back(colorRotated);
 		if (!onlyColorModality)
 		{
@@ -337,7 +348,7 @@ uint16_t HighLevelLineMOD::medianMat(cv::Mat const& in_mat, cv::Rect& in_bb,
                                      uint8_t in_medianPosition)
 {
 	cv::Mat invBinRot; //Turn depth values 0 into 65535
-	threshold(in_mat, invBinRot, 1, 65535, cv::THRESH_BINARY);
+	cv::threshold(in_mat, invBinRot, 1, 65535, cv::THRESH_BINARY);
 	invBinRot = 65535 - invBinRot;
 	cv::Mat croppedDepth = in_mat + invBinRot;
 	croppedDepth = croppedDepth(in_bb);

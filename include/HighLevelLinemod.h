@@ -6,6 +6,7 @@
 #include <opencv2/core.hpp>
 #include <opencv2/rgbd.hpp>
 #include <opencv2/imgproc.hpp>
+#include <opencv2/imgcodecs.hpp>
 
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>
@@ -61,7 +62,7 @@ public:
 	 * @return false Returns false if the templates cant be created. Usually its because they are too small
 	 */
 	bool addTemplate(std::vector<cv::Mat>& in_images, const std::string& in_modelName,
-	                 glm::vec3 in_cameraPosition);
+	                 glm::vec3 in_cameraPosition, int* image_idx = nullptr);
 
 	/**
 	 * @brief Detect templates in the given images with the given class number

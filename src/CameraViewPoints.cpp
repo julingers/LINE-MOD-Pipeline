@@ -15,9 +15,9 @@ void CameraViewPoints::createCameraViewPoints(float in_radius, uint8_t in_subdiv
 	radius = in_radius;
 	numSubdivisions = in_subdivions;
 
-	if (modProps.rotationallySymmetrical)
+	if (modProps.rotationallySymmetrical) // 模型具有旋转对称性
 	{
-		createVerticesForRotSym();
+		createVerticesForRotSym(); // 在圆环上生成视点
 	}
 	else
 	{
@@ -28,7 +28,7 @@ void CameraViewPoints::createCameraViewPoints(float in_radius, uint8_t in_subdiv
 		subdivide();
 	}
 
-	removeSuperfluousVertices();
+	removeSuperfluousVertices(); // 根据对称平面过滤顶点，planes of symmetry: [1, 1, 1]表示x、y、z 三个方向都对称，只保留坐标全部非负的顶点（八分之一球面）
 }
 
 void CameraViewPoints::removeSuperfluousVertices()
@@ -74,6 +74,7 @@ void CameraViewPoints::icosahedronPointsFromRadius()
 
 void CameraViewPoints::createVerticesForRotSym()
 {
+	// 步长 = 60 / 2³ = 7.5°，圆环顶点数 = 360 / 7.5 = 48 个
 	for (uint16_t i = 0; i < 360; i = i + (60/pow(2,numSubdivisions)))
 	{
 		vertices.emplace_back(0.0f, sin(i * CV_PI / 180.0f) * radius,

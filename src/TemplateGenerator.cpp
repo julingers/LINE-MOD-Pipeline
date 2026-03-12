@@ -1,4 +1,5 @@
 #include "TemplateGenerator.h"
+#include <opencv2/imgcodecs.hpp>
 
 TemplateGenerator::TemplateGenerator()
 {
@@ -40,12 +41,13 @@ void TemplateGenerator::cleanup()
 
 void TemplateGenerator::run()
 {
+	int cnt = 0;
 	for (size_t i = 0; i < modelFiles.size(); i++)
 	{
 		camPoints->readModelProperties(modelFolder + modelFiles[i]);
 		opengl->creatModBuffFromFiles(modelFolder + modelFiles[i]);
 		for (uint16_t radiusToModel = startDistance; radiusToModel <= endDistance; radiusToModel +=
-		     stepSize)
+		     stepSize) // 距离数量 = (1200 - 500) / 50 + 1 = 15 个
 		{
 			createCamViewPoints(radiusToModel);
 			for (size_t j = 0; j < numCameraVertices; j++)
@@ -53,11 +55,16 @@ void TemplateGenerator::run()
 				printProgBar(calculateCurrentPercent(radiusToModel, j), modelFiles[i]);
 				std::vector<cv::Mat> images;
 				renderImages(images, i, j);
+				// cv::imwrite("/mnt/hgfs/data/develop/linemod/render_images/" + std::to_string(cnt) + "_color.bmp", images[0]);
+				// cv::imwrite("/mnt/hgfs/data/develop/linemod/render_images/"  + std::to_string(cnt) + "_depth.bmp", images[1]);
+				// line->addTemplate(images, modelFiles[i], camVertices[j], &cnt);
 				line->addTemplate(images, modelFiles[i], camVertices[j]);
+				cnt++;
 			}
 		}
 		line->pushBackTemplates();
 	}
+	std::cout << "renderImages cnt(color same as depth): " << cnt << std::endl; // 15 x 13 = 195
 	line->writeLinemod();
 }
 
