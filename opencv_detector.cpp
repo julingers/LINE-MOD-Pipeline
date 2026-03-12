@@ -1,20 +1,35 @@
 #include <algorithm>
+#include <cmath>
 #include <fstream>
 #include <iostream>
 #include <opencv2/opencv.hpp>
 #include <opencv2/rgbd/linemod.hpp>
 
+// 相机参数
 struct CameraParams {
   float fx, fy, cx, cy;
   int width, height;
+  cv::Mat cameraMatrix;
 };
 
+// 模板位姿数据（与 linemod_tempPosFile.bin 格式一致）
+struct TemplatePose {
+  float tx, ty, tz;       // 平移
+  float qx, qy, qz, qw;   // 四元数旋转
+  int bbX, bbY, bbW, bbH; // 边界框
+  uint16_t medianDepth;   // 深度中值
+};
+
+// 检测结果
 struct DetectionResult {
   std::string classId;
   int templateId;
   float similarity;
   cv::Point position;
   cv::Rect boundingBox;
+  // 计算后的位姿
+  cv::Vec3f translation;
+  cv::Mat rotation;  // 3x3 旋转矩阵
 };
 
 // 计算IoU
@@ -75,6 +90,172 @@ std::vector<DetectionResult> nmsFilter(std::vector<DetectionResult>& results,
   return filtered;
 }
 
+// 读取相机参数
+CameraParams loadCameraParams(const std::string& filename = "linemod_settings.yml") {
+  CameraParams params;
+  cv::FileStorage fs(filename, cv::FileStorage::READ);
+
+  if (!fs.isOpened()) {
+    std::cerr << "Warning: Cannot open settings file: " << filename << std::endl;
+    std::cerr << "         Using default camera parameters" << std::endl;
+    // 默认参数
+    params.width = 640;
+    params.height = 480;
+    params.fx = 1044.87f;
+    params.fy = 1045.69f;
+    params.cx = 320.0f;
+    params.cy = 240.0f;
+  } else {
+    fs["video width"] >> params.width;
+    fs["video height"] >> params.height;
+    fs["camera fx"] >> params.fx;
+    fs["camera fy"] >> params.fy;
+    fs["camera cx"] >> params.cx;
+    fs["camera cy"] >> params.cy;
+    fs.release();
+  }
+
+  params.cameraMatrix = (cv::Mat1d(3, 3) << params.fx, 0, params.cx,
+                         0, params.fy, params.cy,
+                         0, 0, 1);
+
+  std::cout << "Camera parameters: fx=" << params.fx << ", fy=" << params.fy
+            << ", cx=" << params.cx << ", cy=" << params.cy << std::endl;
+
+  return params;
+}
+
+// 读取模板位姿文件
+std::vector<std::vector<TemplatePose>> loadTemplatePoses(
+    const std::string& filename = "linemod_tempPosFile.bin") {
+  std::vector<std::vector<TemplatePose>> modelTemplates;
+
+  std::ifstream input(filename, std::ios::in | std::ios::binary);
+  if (!input.is_open()) {
+    std::cerr << "Warning: Cannot open template pose file: " << filename << std::endl;
+    return modelTemplates;
+  }
+
+  uint32_t numTempVecs;
+  input.read((char*)&numTempVecs, sizeof(uint32_t));
+  std::cout << "Loading " << numTempVecs << " classes of template poses" << std::endl;
+
+  for (uint32_t i = 0; i < numTempVecs; i++) {
+    std::vector<TemplatePose> templates;
+    uint64_t numTemp;
+    input.read((char*)&numTemp, sizeof(uint64_t));
+
+    for (uint64_t j = 0; j < numTemp; j++) {
+      TemplatePose tp;
+      input.read((char*)&tp, sizeof(TemplatePose));
+      templates.push_back(tp);
+    }
+    modelTemplates.push_back(templates);
+    std::cout << "  Class " << i << ": " << templates.size() << " templates" << std::endl;
+  }
+
+  input.close();
+  return modelTemplates;
+}
+
+// 四元数转旋转矩阵
+cv::Mat quaternionToRotationMatrix(float qx, float qy, float qz, float qw) {
+  cv::Mat R(3, 3, CV_32F);
+
+  // 归一化
+  float norm = std::sqrt(qx*qx + qy*qy + qz*qz + qw*qw);
+  qx /= norm; qy /= norm; qz /= norm; qw /= norm;
+
+  R.at<float>(0, 0) = 1 - 2*(qy*qy + qz*qz);
+  R.at<float>(0, 1) = 2*(qx*qy - qz*qw);
+  R.at<float>(0, 2) = 2*(qx*qz + qy*qw);
+  R.at<float>(1, 0) = 2*(qx*qy + qz*qw);
+  R.at<float>(1, 1) = 1 - 2*(qx*qx + qz*qz);
+  R.at<float>(1, 2) = 2*(qy*qz - qx*qw);
+  R.at<float>(2, 0) = 2*(qx*qz - qy*qw);
+  R.at<float>(2, 1) = 2*(qy*qz + qx*qw);
+  R.at<float>(2, 2) = 1 - 2*(qx*qx + qy*qy);
+
+  return R;
+}
+
+// 计算最终位姿
+void computeFinalPose(DetectionResult& result,
+                      const TemplatePose& templatePose,
+                      const CameraParams& camParams,
+                      const cv::Mat& depthImg) {
+  // 1. 获取模板的初始旋转
+  cv::Mat templateRot = quaternionToRotationMatrix(
+      templatePose.qx, templatePose.qy, templatePose.qz, templatePose.qw);
+
+  // 2. 计算匹配位置对应的像素坐标
+  float pixelX = result.position.x + camParams.width / 2 - templatePose.bbX;
+  float pixelY = result.position.y + camParams.height / 2 - templatePose.bbY;
+
+  // 3. 获取深度（从深度图或使用模板的中值深度）
+  float depth = templatePose.tz;  // 默认使用模板深度
+  if (!depthImg.empty()) {
+    // 从深度图获取中心深度
+    int centerZ = result.position.y + result.boundingBox.height / 2;
+    int centerY = result.position.x + result.boundingBox.width / 2;
+    if (centerY >= 0 && centerY < depthImg.cols && centerZ >= 0 && centerZ < depthImg.rows) {
+      uint16_t depthValue = depthImg.at<uint16_t>(centerZ, centerY);
+      if (depthValue > 0) {
+        depth = depthValue;
+      }
+    }
+  }
+
+  // 4. 计算到图像中心的像素距离
+  float offsetX = pixelX - camParams.width / 2;
+  float offsetY = pixelY - camParams.height / 2;
+  float pixelDist = std::sqrt(offsetX*offsetX + offsetY*offsetY);
+
+  // 5. 计算真实的 Z 值（考虑透视）
+  float trueZ = std::sqrt(depth*depth - pixelDist*pixelDist * (depth/camParams.fy) * (depth/camParams.fy));
+  if (std::isnan(trueZ) || trueZ < 0) trueZ = depth;
+
+  // 6. 计算 3D 平移
+  float scale = trueZ / camParams.fy;
+  float tx = (pixelX - camParams.cx) * scale;
+  float ty = (pixelY - camParams.cy) * scale;
+  float tz = trueZ;
+
+  result.translation = cv::Vec3f(tx, ty, tz);
+
+  // 7. 调整旋转矩阵（根据新的位置调整 look-at 方向）
+  // 简化处理：直接使用模板旋转
+  result.rotation = templateRot;
+}
+
+// 绘制坐标轴
+void drawCoordinateAxis(cv::Mat& image, const CameraParams& camParams,
+                        const DetectionResult& result, float axisLength = 50.0f) {
+  std::vector<cv::Point3f> axisPoints;
+  axisPoints.push_back(cv::Point3f(0, 0, 0));                      // 原点
+  axisPoints.push_back(cv::Point3f(axisLength, 0, 0));            // X轴 (红)
+  axisPoints.push_back(cv::Point3f(0, axisLength, 0));            // Y轴 (绿)
+  axisPoints.push_back(cv::Point3f(0, 0, axisLength));            // Z轴 (蓝)
+
+  // 旋转向量
+  cv::Mat rvec;
+  cv::Rodrigues(result.rotation, rvec);
+
+  // 平移向量
+  cv::Mat tvec = (cv::Mat1f(3, 1) << result.translation[0],
+                  result.translation[1], result.translation[2]);
+
+  // 投影到2D
+  std::vector<cv::Point2f> projectedPoints;
+  cv::projectPoints(axisPoints, rvec, tvec, camParams.cameraMatrix,
+                    cv::Mat(), projectedPoints);
+
+  // 绘制坐标轴
+  cv::line(image, projectedPoints[0], projectedPoints[1], cv::Scalar(0, 0, 255), 2);  // X - 红
+  cv::line(image, projectedPoints[0], projectedPoints[2], cv::Scalar(0, 255, 0), 2);  // Y - 绿
+  cv::line(image, projectedPoints[0], projectedPoints[3], cv::Scalar(255, 0, 0), 2);  // Z - 蓝
+}
+
 cv::Ptr<cv::linemod::Detector> loadDetector(const std::string& filename) {
   cv::Ptr<cv::linemod::Detector> detector =
       cv::makePtr<cv::linemod::Detector>();
@@ -129,6 +310,8 @@ cv::Ptr<cv::linemod::Detector> loadDetector(const std::string& filename) {
 std::vector<DetectionResult> detect(cv::Ptr<cv::linemod::Detector>& detector,
                                     const cv::Mat& colorImg,
                                     const cv::Mat& depthImg,
+                                    const std::vector<std::vector<TemplatePose>>& templatePoses,
+                                    const CameraParams& camParams,
                                     float threshold = 80.0f,
                                     bool useDepth = true) {
   std::vector<DetectionResult> results;
@@ -155,6 +338,9 @@ std::vector<DetectionResult> detect(cv::Ptr<cv::linemod::Detector>& detector,
   detector->match(sources, threshold, matches);
 
   std::cout << "Found " << matches.size() << " matches" << std::endl;
+
+  // 获取 class id 到索引的映射
+  std::vector<cv::String> classIds = detector->classIds();
 
   for (const auto& match : matches) {
     DetectionResult result;
@@ -185,6 +371,25 @@ std::vector<DetectionResult> detect(cv::Ptr<cv::linemod::Detector>& detector,
       result.boundingBox = cv::Rect(match.x - 50, match.y - 50, 100, 100);
     }
 
+    // 计算位姿
+    int classIdx = -1;
+    for (size_t i = 0; i < classIds.size(); i++) {
+      if (classIds[i] == match.class_id) {
+        classIdx = i;
+        break;
+      }
+    }
+
+    if (classIdx >= 0 && classIdx < (int)templatePoses.size() &&
+        match.template_id < (int)templatePoses[classIdx].size()) {
+      computeFinalPose(result, templatePoses[classIdx][match.template_id],
+                       camParams, depthImg);
+    } else {
+      // 默认位姿
+      result.translation = cv::Vec3f(0, 0, 500);
+      result.rotation = cv::Mat::eye(3, 3, CV_32F);
+    }
+
     results.push_back(result);
   }
 
@@ -192,7 +397,8 @@ std::vector<DetectionResult> detect(cv::Ptr<cv::linemod::Detector>& detector,
 }
 
 void drawResults(cv::Mat& image, cv::Ptr<cv::linemod::Detector>& detector,
-                 const std::vector<DetectionResult>& results) {
+                 const std::vector<DetectionResult>& results,
+                 const CameraParams& camParams) {
   cv::Scalar colors[] = {
       cv::Scalar(0, 255, 0),    // 绿色
       cv::Scalar(0, 0, 255),    // 红色
@@ -224,6 +430,9 @@ void drawResults(cv::Mat& image, cv::Ptr<cv::linemod::Detector>& detector,
       // 如果无法获取模板，跳过特征点绘制
     }
 
+    // 绘制坐标轴
+    drawCoordinateAxis(image, camParams, result, 50.0f);
+
     // 绘制边界框
     cv::rectangle(image, result.boundingBox, color, 2);
 
@@ -231,10 +440,13 @@ void drawResults(cv::Mat& image, cv::Ptr<cv::linemod::Detector>& detector,
     cv::circle(image, result.position, 5, cv::Scalar(255, 255, 255), -1);
     cv::circle(image, result.position, 3, color, -1);
 
-    // 绘制标签
+    // 绘制标签（包含位姿信息）
     std::string label = result.classId + " (T" +
                         std::to_string(result.templateId) + ", S" +
-                        std::to_string((int)result.similarity) + ")";
+                        std::to_string((int)result.similarity) + ") [" +
+                        std::to_string((int)result.translation[0]) + ", " +
+                        std::to_string((int)result.translation[1]) + ", " +
+                        std::to_string((int)result.translation[2]) + "]mm";
 
     int baseline = 0;
     cv::Size textSize =
@@ -360,6 +572,12 @@ int main(int argc, char** argv) {
   }
   std::cout << std::endl << std::endl;
 
+  // 加载相机参数
+  CameraParams camParams = loadCameraParams();
+
+  // 加载模板位姿
+  std::vector<std::vector<TemplatePose>> templatePoses = loadTemplatePoses();
+
   std::cout << "Loading detector..." << std::endl;
   cv::Ptr<cv::linemod::Detector> detector = loadDetector(templateFile);
   if (!detector) {
@@ -396,7 +614,7 @@ int main(int argc, char** argv) {
   tm.start();
 
   std::vector<DetectionResult> results =
-      detect(detector, colorImg, depthImg, threshold, useDepth);
+      detect(detector, colorImg, depthImg, templatePoses, camParams, threshold, useDepth);
 
   tm.stop();
   std::cout << "Detection time: " << tm.getTimeMilli() << " ms" << std::endl;
@@ -414,25 +632,23 @@ int main(int argc, char** argv) {
   if (!results.empty()) {
     std::cout << "Detection Results:" << std::endl;
     std::cout << "------------------" << std::endl;
-    if (1) {
-      for (size_t i = 0; i < results.size(); i++) {
-        const auto& r = results[i];
-        std::cout << "[" << i << "] Class: " << r.classId
-                  << ", Template: " << r.templateId
-                  << ", Similarity: " << r.similarity << ", Position: ("
-                  << r.position.x << ", " << r.position.y << ")"
-                  << ", BBox: " << r.boundingBox.width << "x"
-                  << r.boundingBox.height << std::endl;
-      }
+    for (size_t i = 0; i < results.size(); i++) {
+      const auto& r = results[i];
+      std::cout << "[" << i << "] Class: " << r.classId
+                << ", Template: " << r.templateId
+                << ", Similarity: " << r.similarity << std::endl;
+      std::cout << "    Position: (" << r.position.x << ", " << r.position.y << ")"
+                << ", BBox: " << r.boundingBox.width << "x" << r.boundingBox.height << std::endl;
+      std::cout << "    Translation (mm): [" << r.translation[0] << ", "
+                << r.translation[1] << ", " << r.translation[2] << "]" << std::endl;
     }
-
     std::cout << std::endl;
   } else {
     std::cout << "No matches found!" << std::endl;
   }
 
   cv::Mat resultImg = colorImg.clone();
-  drawResults(resultImg, detector, results);
+  drawResults(resultImg, detector, results, camParams);
 
   cv::namedWindow("LINE-MOD Detection Result", cv::WINDOW_AUTOSIZE);
   cv::imshow("LINE-MOD Detection Result", resultImg);
