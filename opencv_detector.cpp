@@ -74,10 +74,21 @@ std::vector<DetectionResult> detect(cv::Ptr<cv::linemod::Detector>& detector,
                                     bool useDepth = true) {
   std::vector<DetectionResult> results;
 
+  int numModalities = detector->getModalities().size();
+  std::cout << "Detector uses " << numModalities << " modalities" << std::endl;
+  
   std::vector<cv::Mat> sources;
   sources.push_back(colorImg);
-  if (useDepth && !depthImg.empty()) {
+  
+  if (numModalities == 2) {
+    if (depthImg.empty()) {
+      std::cerr << "Error: Detector requires depth image but none provided!" << std::endl;
+      return results;
+    }
     sources.push_back(depthImg);
+    std::cout << "Using color + depth modalities" << std::endl;
+  } else if (numModalities == 1) {
+    std::cout << "Using color modality only" << std::endl;
   }
 
   std::vector<cv::linemod::Match> matches;
@@ -206,7 +217,7 @@ void printUsage(const char* programName) {
 
 int main(int argc, char** argv) {
   std::cout << "Usage: " << argv[0]
-            << " <template.yml> <color_image> <depth_image>" << std::endl;
+            << " <template.yml> <color_image> [depth_image]" << std::endl;
   std::string templateFile;
   std::string colorFile;
   std::string depthFile;
@@ -310,12 +321,12 @@ int main(int argc, char** argv) {
     std::cout << "------------------" << std::endl;
     for (size_t i = 0; i < results.size(); i++) {
       const auto& r = results[i];
-      std::cout << "[" << i << "] Class: " << r.classId
-                << ", Template: " << r.templateId
-                << ", Similarity: " << r.similarity << ", Position: ("
-                << r.position.x << ", " << r.position.y << ")"
-                << ", BBox: " << r.boundingBox.width << "x"
-                << r.boundingBox.height << std::endl;
+    //   std::cout << "[" << i << "] Class: " << r.classId
+    //             << ", Template: " << r.templateId
+    //             << ", Similarity: " << r.similarity << ", Position: ("
+    //             << r.position.x << ", " << r.position.y << ")"
+    //             << ", BBox: " << r.boundingBox.width << "x"
+    //             << r.boundingBox.height << std::endl;
     }
     std::cout << std::endl;
   } else {
