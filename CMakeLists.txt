@@ -63,6 +63,9 @@ setup_linemod_target(Template_Generator)
 add_executable(Arcuo_Benchmark arucoBenchmark.cpp ${HEADER_FILES} ${SOURCE_FILES})
 setup_linemod_target(Arcuo_Benchmark)
 
+add_executable(opencv_detector opencv_detector.cpp)
+setup_linemod_target(opencv_detector)
+
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
 include(CPack)
