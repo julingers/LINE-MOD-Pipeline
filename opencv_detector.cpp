@@ -36,8 +36,8 @@ float calculateIoU(const cv::Rect& a, const cv::Rect& b) {
 
 // NMS过滤
 std::vector<DetectionResult> nmsFilter(std::vector<DetectionResult>& results,
-                                        float iouThreshold = 0.3f,
-                                        int maxResults = 10) {
+                                       float iouThreshold = 0.3f,
+                                       int maxResults = 10) {
   if (results.empty()) {
     return results;
   }
@@ -51,7 +51,8 @@ std::vector<DetectionResult> nmsFilter(std::vector<DetectionResult>& results,
   std::vector<DetectionResult> filtered;
   std::vector<bool> suppressed(results.size(), false);
 
-  for (size_t i = 0; i < results.size() && filtered.size() < (size_t)maxResults; i++) {
+  for (size_t i = 0; i < results.size() && filtered.size() < (size_t)maxResults;
+       i++) {
     if (suppressed[i]) {
       continue;
     }
@@ -134,13 +135,14 @@ std::vector<DetectionResult> detect(cv::Ptr<cv::linemod::Detector>& detector,
 
   int numModalities = detector->getModalities().size();
   std::cout << "Detector uses " << numModalities << " modalities" << std::endl;
-  
+
   std::vector<cv::Mat> sources;
   sources.push_back(colorImg);
-  
+
   if (numModalities == 2) {
     if (depthImg.empty()) {
-      std::cerr << "Error: Detector requires depth image but none provided!" << std::endl;
+      std::cerr << "Error: Detector requires depth image but none provided!"
+                << std::endl;
       return results;
     }
     sources.push_back(depthImg);
@@ -161,21 +163,20 @@ std::vector<DetectionResult> detect(cv::Ptr<cv::linemod::Detector>& detector,
     result.similarity = match.similarity;
     result.position = cv::Point(match.x, match.y);
 
-    // 获取边界框
+    // 获取边界框（只使用第一个模态）
     try {
       std::vector<cv::linemod::Template> templates =
           detector->getTemplates(match.class_id, match.template_id);
       if (!templates.empty()) {
-        // 计算所有特征的包围盒
+        // 只使用第一个模态（ColorGradient）计算包围盒
+        const auto& t = templates[0];
         int minX = INT_MAX, minY = INT_MAX;
         int maxX = INT_MIN, maxY = INT_MIN;
-        for (const auto& t : templates) {
-          for (const auto& f : t.features) {
-            minX = std::min(minX, (int)f.x);
-            minY = std::min(minY, (int)f.y);
-            maxX = std::max(maxX, (int)f.x);
-            maxY = std::max(maxY, (int)f.y);
-          }
+        for (const auto& f : t.features) {
+          minX = std::min(minX, (int)f.x);
+          minY = std::min(minY, (int)f.y);
+          maxX = std::max(maxX, (int)f.x);
+          maxY = std::max(maxY, (int)f.y);
         }
         result.boundingBox = cv::Rect(match.x + minX, match.y + minY,
                                       maxX - minX + 1, maxY - minY + 1);
@@ -205,16 +206,18 @@ void drawResults(cv::Mat& image, cv::Ptr<cv::linemod::Detector>& detector,
     cv::Scalar color = colors[colorIdx % 5];
     colorIdx++;
 
-    // 绘制特征点
+    // 绘制特征点（只绘制第一个模态ColorGradient）
     try {
       std::vector<cv::linemod::Template> templates =
           detector->getTemplates(result.classId, result.templateId);
 
-      for (const auto& templ : templates) {
-        for (const auto& feature : templ.features) {
+      if (!templates.empty()) {
+        // 获取第一个模态的T参数用于绘制圆半径
+        int T = detector->getT(0);
+        for (const auto& feature : templates[0].features) {
           cv::Point pt(feature.x + result.position.x,
                        feature.y + result.position.y);
-          cv::circle(image, pt, 2, color, -1);
+          cv::circle(image, pt, T / 2, color, -1);
         }
       }
     } catch (...) {
@@ -402,7 +405,8 @@ int main(int argc, char** argv) {
   if (useNms && !results.empty()) {
     size_t beforeNms = results.size();
     results = nmsFilter(results, iouThreshold, maxResults);
-    std::cout << "NMS: " << beforeNms << " -> " << results.size() << " results" << std::endl;
+    std::cout << "NMS: " << beforeNms << " -> " << results.size() << " results"
+              << std::endl;
   }
 
   std::cout << std::endl;
@@ -410,15 +414,18 @@ int main(int argc, char** argv) {
   if (!results.empty()) {
     std::cout << "Detection Results:" << std::endl;
     std::cout << "------------------" << std::endl;
-    for (size_t i = 0; i < results.size(); i++) {
-      const auto& r = results[i];
-    //   std::cout << "[" << i << "] Class: " << r.classId
-    //             << ", Template: " << r.templateId
-    //             << ", Similarity: " << r.similarity << ", Position: ("
-    //             << r.position.x << ", " << r.position.y << ")"
-    //             << ", BBox: " << r.boundingBox.width << "x"
-    //             << r.boundingBox.height << std::endl;
+    if (1) {
+      for (size_t i = 0; i < results.size(); i++) {
+        const auto& r = results[i];
+        std::cout << "[" << i << "] Class: " << r.classId
+                  << ", Template: " << r.templateId
+                  << ", Similarity: " << r.similarity << ", Position: ("
+                  << r.position.x << ", " << r.position.y << ")"
+                  << ", BBox: " << r.boundingBox.width << "x"
+                  << r.boundingBox.height << std::endl;
+      }
     }
+
     std::cout << std::endl;
   } else {
     std::cout << "No matches found!" << std::endl;
