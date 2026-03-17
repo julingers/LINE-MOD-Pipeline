@@ -20,13 +20,13 @@ struct ModelBuffer {
 
   /**
    * @brief Binding the model buffer for rendering
-	 * 
+   *
    */
   void bind();
 
   /**
    * @brief Unbinding the buffer after rendering
-	 * 
+   *
    */
   void unbind();
 

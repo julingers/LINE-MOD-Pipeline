@@ -1,3 +1,10 @@
+/*
+ * @Author: juling julinger@qq.com
+ * @Date: 2026-03-11 14:18:01
+ * @LastEditors: juling julinger@qq.com
+ * @LastEditTime: 2026-03-17 17:29:05
+ */
+
 #include <algorithm>
 #include <cmath>
 #include <fstream>
