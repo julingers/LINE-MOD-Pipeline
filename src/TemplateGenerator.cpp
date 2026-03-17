@@ -6,71 +6,71 @@ TemplateGenerator::TemplateGenerator() {
   CameraParameters camParams;
   TemplateGenerationSettings templateSettings;
   readSettings(camParams, templateSettings);
-  modelFolder = templateSettings.modelFolder;
-  startDistance = templateSettings.startDistance;
-  endDistance = templateSettings.endDistance;
-  stepSize = templateSettings.stepSize;
-  subdivisions = templateSettings.subdivisions;
+  modelFolder_ = templateSettings.modelFolder;
+  startDistance_ = templateSettings.startDistance;
+  endDistance_ = templateSettings.endDistance;
+  stepSize_ = templateSettings.stepSize;
+  subdivisions_ = templateSettings.subdivisions;
 
-  opengl = new OpenGLRender(camParams);
-  line = new HighLevelLineMOD(camParams, templateSettings);
-  camPoints = new CameraViewPoints();
-  filesInDirectory(modelFiles, modelFolder, templateSettings.modelFileEnding);
+  opengl_ = new OpenGLRender(camParams);
+  line_ = new HighLevelLineMOD(camParams, templateSettings);
+  camPoints_ = new CameraViewPoints();
+  filesInDirectory(modelFiles_, modelFolder_, templateSettings.modelFileEnding);
 }
 
 TemplateGenerator::~TemplateGenerator() { cleanup(); }
 
 void TemplateGenerator::cleanup() {
-  if (opengl) {
-    delete opengl;
+  if (opengl_) {
+    delete opengl_;
   }
-  if (line) {
-    delete line;
+  if (line_) {
+    delete line_;
   }
-  if (camPoints) {
-    delete camPoints;
+  if (camPoints_) {
+    delete camPoints_;
   }
 }
 
 void TemplateGenerator::run() {
   int cnt = 0;
-  for (size_t i = 0; i < modelFiles.size(); i++) {
-    camPoints->readModelProperties(modelFolder + modelFiles[i]);
-    opengl->creatModBuffFromFiles(modelFolder + modelFiles[i]);
-    for (uint16_t radiusToModel = startDistance; radiusToModel <= endDistance;
-         radiusToModel += stepSize) {
+  for (size_t i = 0; i < modelFiles_.size(); i++) {
+    camPoints_->readModelProperties(modelFolder_ + modelFiles_[i]);
+    opengl_->creatModBuffFromFiles(modelFolder_ + modelFiles_[i]);
+    for (uint16_t radiusToModel = startDistance_; radiusToModel <= endDistance_;
+         radiusToModel += stepSize_) {
       createCamViewPoints(radiusToModel);
-      for (size_t j = 0; j < numCameraVertices; j++) {
-        printProgBar(calculateCurrentPercent(radiusToModel, j), modelFiles[i]);
+      for (size_t j = 0; j < numCameraVertices_; j++) {
+        printProgBar(calculateCurrentPercent(radiusToModel, j), modelFiles_[i]);
         std::vector<cv::Mat> images;
         renderImages(images, i, j);
         // line->addTemplate(images, modelFiles[i], camVertices[j], &cnt);
-        line->addTemplate(images, modelFiles[i], camVertices[j]);
+        line_->addTemplate(images, modelFiles_[i], camVertices_[j]);
         cnt++;
       }
     }
-    line->pushBackTemplates();
+    line_->pushBackTemplates();
   }
   std::cout << "renderImages cnt(color same as depth): " << cnt << std::endl;
-  line->writeLinemod();
+  line_->writeLinemod();
 }
 
 void TemplateGenerator::createCamViewPoints(float in_radiusToModel) {
-  camPoints->createCameraViewPoints(in_radiusToModel, subdivisions);
-  camVertices = camPoints->getVertices();
-  numCameraVertices = camVertices.size();
+  camPoints_->createCameraViewPoints(in_radiusToModel, subdivisions_);
+  camVertices_ = camPoints_->getVertices();
+  numCameraVertices_ = camVertices_.size();
 }
 
 void TemplateGenerator::renderImages(std::vector<cv::Mat>& in_imgVec,
                                      uint16_t in_modelIterator,
                                      uint16_t in_vertIterator) {
   in_imgVec.clear();
-  opengl->renderDepthToFrontBuff(in_modelIterator,
-                                 glm::vec3(camVertices[in_vertIterator]));
-  cv::Mat depth = opengl->getDepthImgFromBuff();
-  opengl->renderColorToFrontBuff(in_modelIterator,
-                                 glm::vec3(camVertices[in_vertIterator]));
-  cv::Mat color = opengl->getColorImgFromBuff();
+  opengl_->renderDepthToFrontBuff(in_modelIterator,
+                                  glm::vec3(camVertices_[in_vertIterator]));
+  cv::Mat depth = opengl_->getDepthImgFromBuff();
+  opengl_->renderColorToFrontBuff(in_modelIterator,
+                                  glm::vec3(camVertices_[in_vertIterator]));
+  cv::Mat color = opengl_->getColorImgFromBuff();
   std::vector<cv::Mat> images;
   in_imgVec.push_back(color);
   in_imgVec.push_back(depth);
@@ -102,11 +102,11 @@ void TemplateGenerator::printProgBar(uint16_t in_percent,
 uint16_t TemplateGenerator::calculateCurrentPercent(
     uint16_t const& in_spehreRadius, uint16_t const& in_currentIteration) {
   uint16_t numberOfDiffRadius =
-      std::floor((endDistance - startDistance + stepSize) / stepSize);
+      std::floor((endDistance_ - startDistance_ + stepSize_) / stepSize_);
   return std::round((float)(in_currentIteration + 1) * 100.0f /
-                        (float)numCameraVertices / (float)numberOfDiffRadius +
-                    (float)(in_spehreRadius - startDistance) / (float)stepSize *
-                        100 / (float)numberOfDiffRadius);
+                        (float)numCameraVertices_ / (float)numberOfDiffRadius +
+                    (float)(in_spehreRadius - startDistance_) /
+                        (float)stepSize_ * 100 / (float)numberOfDiffRadius);
 }
 
 void TemplateGenerator::writeSettings() {

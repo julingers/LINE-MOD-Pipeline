@@ -24,19 +24,19 @@ class TemplateGenerator {
   void run();
 
  private:
-  OpenGLRender* opengl;
-  HighLevelLineMOD* line;
-  CameraViewPoints* camPoints;
-  std::vector<glm::vec3> camVertices;
+  OpenGLRender* opengl_;
+  HighLevelLineMOD* line_;
+  CameraViewPoints* camPoints_;
+  std::vector<glm::vec3> camVertices_;
 
-  std::vector<std::string> modelFiles;
-  std::string modelFolder;
-  uint16_t startDistance;
-  uint16_t endDistance;
-  uint16_t stepSize;
-  uint16_t subdivisions;
+  std::vector<std::string> modelFiles_;
+  std::string modelFolder_;
+  uint16_t startDistance_;
+  uint16_t endDistance_;
+  uint16_t stepSize_;
+  uint16_t subdivisions_;
 
-  uint32_t numCameraVertices;
+  uint32_t numCameraVertices_;
 
   /**
    * @brief Create the viewpoints of the camera

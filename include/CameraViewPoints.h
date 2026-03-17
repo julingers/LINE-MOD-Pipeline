@@ -11,13 +11,13 @@ const float goldenRatio = 1.61803398875;
  * icosaheadron or circle
  */
 class CameraViewPoints {
-  float radius;
-  float icosahedronPointA;
-  float icosahedronPointB;
-  uint8_t numSubdivisions;
+  float radius_;
+  float icosahedronPointA_;
+  float icosahedronPointB_;
+  uint8_t numSubdivisions_;
 
-  std::vector<glm::vec3> vertices;
-  std::vector<Index> indices;
+  std::vector<glm::vec3> vertices_;
+  std::vector<Index> indices_;
 
  public:
   CameraViewPoints();
@@ -58,7 +58,10 @@ class CameraViewPoints {
   void createVerticesForRotSym();
 
   //  Create an Icosahedron
-  void createIcosahedron();
+  void createIcosahedron(const float& icosahedronPointA,
+                         const float& icosahedronPointB,
+                         std::vector<glm::vec3>& vertices,
+                         std::vector<Index>& indices);
 
   // Remove duplicate vertices after subdivison
   int32_t checkForDuplicate(uint32_t vertSize);
