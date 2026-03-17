@@ -75,7 +75,7 @@ void Aruco::detectBoard()
 			fromCV2GLM(cv::Mat(rotMat), &glmRotMat);
 			glm::vec3 eulAng = glm::eulerAngles(glm::toQuat(glmRotMat));
 			eulAng.x += CV_PI / 2;
-			glmRotMat = glm::toMat4(glm::qua<float>(glm::vec3(eulAng.x, eulAng.y, eulAng.z)));
+			glmRotMat = glm::toMat3(glm::quat(glm::vec3(eulAng.x, eulAng.y, eulAng.z)));
 			cv::putText(imageCopy, glm::to_string(glm::vec3(tvec[0], tvec[1], tvec[2])),
 			            cv::Point(50, 20), cv::FONT_HERSHEY_SIMPLEX, 0.5f, cv::Scalar(0, 0, 255),
 			            2.0f);

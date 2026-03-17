@@ -179,6 +179,7 @@ void OpenGLRender::setupSDLWindow()
 
 void OpenGLRender::setupOpenGL()
 {
+	glewExperimental = GL_TRUE; 
 	GLenum errorMsg = glewInit();
 	if (errorMsg != GLEW_OK)
 	{
@@ -190,6 +191,7 @@ void OpenGLRender::setupOpenGL()
 		std::cout << "OpenGL successfully initiated. Version: " << glGetString(GL_VERSION) << std::
 			endl;
 	}
+	glGetError();
 	glEnable(GL_DEPTH_TEST);
 }
 

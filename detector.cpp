@@ -29,10 +29,11 @@ int main()
 		//kin2.getKinectFrames(colorImg, depthImg);
 		////////////////////
 
-		if (colorImg.empty())
+		if (colorImg.empty() || depthImg.empty())
 		{
 			std::cout << "End of Sequence" << std::endl;
 			cv::waitKey(0);
+			break;
 		}
 
 		imgs.push_back(colorImg);

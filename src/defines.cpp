@@ -20,13 +20,13 @@ ObjectPose::ObjectPose()
 {
 }
 
-ObjectPose::ObjectPose(glm::vec3 tra, glm::qua<float> qua) :
+ObjectPose::ObjectPose(glm::vec3 tra, glm::quat qua) :
 	translation(tra),
 	quaternions(qua)
 {
 }
 
-ObjectPose::ObjectPose(glm::vec3 tra, glm::qua<float> qua, cv::Rect bb) :
+ObjectPose::ObjectPose(glm::vec3 tra, glm::quat qua, cv::Rect bb) :
 	translation(tra),
 	quaternions(qua),
 	boundingBox(std::move(bb))

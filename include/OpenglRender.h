@@ -12,6 +12,7 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 #include "defines.h"
 #include "utility.h"
