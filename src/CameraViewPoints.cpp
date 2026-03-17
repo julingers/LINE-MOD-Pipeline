@@ -114,9 +114,9 @@ int32_t CameraViewPoints::checkForDuplicate(uint32_t vertSize) {
 
 #pragma omp parallel for
   for (int32_t i = 0; i < vertSize; i++) {
-    if (vertices[vertSize].x == vertices[i].x &&
-        vertices[vertSize].y == vertices[i].y &&
-        vertices[vertSize].z == vertices[i].z) {
+    if (abs(vertices[vertSize].x - vertices[i].x) < 1e-6 &&
+        abs(vertices[vertSize].y == vertices[i].y) < 1e-6 &&
+        abs(vertices[vertSize].z == vertices[i].z) < 1e-6) {
       index = i;
     }
   }
