@@ -51,8 +51,8 @@ void TemplateGenerator::run() {
 
         std::vector<cv::Mat> images;
         renderImages(images, i, j);
-        line_->addTemplate(images, modelFiles_[i], camVertices_[j], &cnt);
-        // line_->addTemplate(images, modelFiles_[i], camVertices_[j]);
+        // line_->addTemplate(images, modelFiles_[i], camVertices_[j], &cnt);
+        line_->addTemplate(images, modelFiles_[i], camVertices_[j]);
         cnt++;
       }
     }
@@ -80,6 +80,14 @@ void TemplateGenerator::renderImages(std::vector<cv::Mat>& in_imgVec,
   cv::Mat color = opengl_->getColorImgFromBuff();
   std::vector<cv::Mat> images;
   in_imgVec.push_back(color);
+
+  // cv::imwrite("/home/juling/linemod_color.bmp", color);
+  // cv::imwrite("/home/juling/linemod_depth.bmp", depth);
+  // cv::Mat depth8u;
+  // cv::normalize(depth, depth8u, 0, 255, cv::NORM_MINMAX);
+  // depth8u.convertTo(depth8u, CV_8U);
+  // cv::imwrite("/home/juling/linemod_depth_8u.bmp", depth8u);
+
   in_imgVec.push_back(depth);
 }
 

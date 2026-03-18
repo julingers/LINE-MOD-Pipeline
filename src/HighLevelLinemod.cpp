@@ -85,8 +85,8 @@ bool HighLevelLineMOD::addTemplate(std::vector<cv::Mat>& in_images,
                       std::to_string(*image_idx) + "_" + std::to_string(cnt) +
                       ".bmp",
                   depthRotated);
+      cnt++;
     }
-    cnt++;
     templateImgs.push_back(colorRotated);
     if (!onlyColorModality_) {
       templateImgs.push_back(depthRotated);

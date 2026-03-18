@@ -27,6 +27,7 @@ find_package(ASSIMP REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(freenect2 REQUIRED)
 find_package(GLEW REQUIRED)
+find_package(Glog REQUIRED)
 set(OpenCV_DIR /usr/local/lib/cmake/opencv4) # 同时有opencv3和opencv4时需要指定路径
 find_package(OpenCV REQUIRED)
 
@@ -41,6 +42,7 @@ function(setup_linemod_target target_name)
 			${freenect2_INCLUDE_DIR}
 			${GLEW_INCLUDE_DIRS}
 			${OpenCV_INCLUDE_DIRS}
+			${GLOG_INCLUDE_DIRS}
 	)
 
 	target_link_libraries(${target_name} PUBLIC
@@ -51,6 +53,8 @@ function(setup_linemod_target target_name)
 			${GLEW_LIBRARIES}
 			${OpenCV_LIBRARIES}
 			stdc++fs # C++17文件系统
+			glog
+			gflags
     )
 endfunction()
 
