@@ -29,12 +29,14 @@ HighLevelLineMOD::HighLevelLineMOD(
     modality.emplace_back(cv::makePtr<cv::linemod::ColorGradient>());
     modality.emplace_back(cv::makePtr<cv::linemod::DepthNormal>());
 
+    // 金字塔采样步长，两层，第一层步长为5，第二层步长为8
     static const int T_DEFAULTS[] = {5, 8};
     detector_ = cv::makePtr<cv::linemod::Detector>(
         modality, std::vector<int>(T_DEFAULTS, T_DEFAULTS + 2));
   } else {
     std::vector<cv::Ptr<cv::linemod::Modality>> modality;
     modality.emplace_back(cv::makePtr<cv::linemod::ColorGradient>());
+    // 金字塔采样步长，两层，第一层步长为2，第二层步长为8
     static const int T_DEFAULTS[] = {2, 8};
     detector_ = cv::makePtr<cv::linemod::Detector>(
         modality, std::vector<int>(T_DEFAULTS, T_DEFAULTS + 2));
@@ -59,12 +61,9 @@ bool HighLevelLineMOD::addTemplate(std::vector<cv::Mat>& in_images,
                                    const std::string& in_modelName,
                                    glm::vec3 in_cameraPosition,
                                    int* image_idx) {
-  cv::Mat mask;
-  cv::Mat maskRotated;
+  cv::Mat mask, maskRotated;
   std::vector<cv::Mat> templateImgs;
-  cv::Mat colorRotated;
-  cv::Mat depthRotated;
-  cv::Mat colorToBinary;
+  cv::Mat colorRotated, depthRotated, colorToBinary;
   cv::threshold(in_images[0], colorToBinary, 1, 255, cv::THRESH_BINARY);
   cv::threshold(in_images[1], mask, 1, 65535, cv::THRESH_BINARY);
   mask.convertTo(mask, CV_8UC1);
@@ -127,12 +126,12 @@ void HighLevelLineMOD::templateMask(cv::linemod::Match const& in_match,
   }
 
   std::vector<cv::Point> hull;
-  convexHull(points, hull);
+  cv::convexHull(points, hull);
 
   dst = cv::Mat::zeros(cv::Size(videoWidth_, videoHeight_), CV_8U);
   const auto hull_count = (int)hull.size();
   const cv::Point* hull_pts = &hull[0];
-  fillPoly(dst, &hull_pts, &hull_count, 1, cv::Scalar(255));
+  cv::fillPoly(dst, &hull_pts, &hull_count, 1, cv::Scalar(255));
 }
 
 bool HighLevelLineMOD::detectTemplate(std::vector<cv::Mat>& in_imgs,
@@ -311,18 +310,29 @@ void HighLevelLineMOD::generateRotMatForInplaneRotation() {
 
 uint16_t HighLevelLineMOD::medianMat(cv::Mat const& in_mat, cv::Rect& in_bb,
                                      uint8_t in_medianPosition) {
+  // 处理深度值为0的像素
   cv::Mat invBinRot;  // Turn depth values 0 into 65535
-  cv::threshold(in_mat, invBinRot, 1, 65535, cv::THRESH_BINARY);
-  invBinRot = 65535 - invBinRot;
-  cv::Mat croppedDepth = in_mat + invBinRot;
+  cv::threshold(in_mat, invBinRot, 1, 65535,
+                cv::THRESH_BINARY);  // pixel >=1 becomes 65535, 0 stays 0
+  invBinRot = 65535 - invBinRot;     // 65535 becomes 0, 0 stays 65535
+  cv::Mat croppedDepth =
+      in_mat + invBinRot;  // pixel >=1 stays the same, 0 becomes 65535
   croppedDepth = croppedDepth(in_bb);
 
   std::vector<uint16_t> vecFromMat(croppedDepth.begin<uint16_t>(),
                                    croppedDepth.end<uint16_t>());
-  std::nth_element(vecFromMat.begin(),
-                   vecFromMat.begin() + vecFromMat.size() / 4,
+
+  if (vecFromMat.empty() || in_medianPosition == 0) {
+    std::cout << "ERROR: No pixels in bounding box or median position is 0"
+              << std::endl;
+    return 0;
+  }
+
+  // 提取第in_medianPosition个最小的元素
+  size_t targetIndex = vecFromMat.size() / in_medianPosition;
+  std::nth_element(vecFromMat.begin(), vecFromMat.begin() + targetIndex,
                    vecFromMat.end());
-  return vecFromMat[vecFromMat.size() / in_medianPosition];
+  return vecFromMat[targetIndex];
 }
 
 void HighLevelLineMOD::calculateTemplatePose(glm::vec3& in_translation,

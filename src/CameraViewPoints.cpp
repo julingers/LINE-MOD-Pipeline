@@ -11,7 +11,7 @@ void CameraViewPoints::createCameraViewPoints(float in_radius,
   radius_ = in_radius;
   numSubdivisions_ = in_subdivions;  // 正二十面体的细分数量
 
-  if (modProps.rotationallySymmetrical) {
+  if (modProps_.rotationallySymmetrical) {
     // 旋转对称体，圆周采样
     createVerticesForRotSym();
   } else {
@@ -29,7 +29,7 @@ void CameraViewPoints::createCameraViewPoints(float in_radius,
 void CameraViewPoints::removeSuperfluousVertices() {
   std::vector<glm::vec3> tmpVertices;
   for (const auto& vertice : vertices_) {
-    glm::vec3 tmpVertice = vertice * modProps.planesOfSymmetry;
+    glm::vec3 tmpVertice = vertice * modProps_.planesOfSymmetry;
     bool allElementsPositive = true;
     if (tmpVertice.x < 0 || tmpVertice.y < 0 || tmpVertice.z < 0) {
       allElementsPositive = false;
@@ -50,11 +50,11 @@ void CameraViewPoints::readModelProperties(std::string in_modelFile) {
   cv::FileStorage fs(filename, cv::FileStorage::READ);
   cv::Vec3b tempVec;
 
-  fs["lower color range"] >> modProps.lowerColorRange;
-  fs["upper color range"] >> modProps.upperColorRange;
-  fs["has rotational symmetry"] >> modProps.rotationallySymmetrical;
+  fs["lower color range"] >> modProps_.lowerColorRange;
+  fs["upper color range"] >> modProps_.upperColorRange;
+  fs["has rotational symmetry"] >> modProps_.rotationallySymmetrical;
   fs["planes of symmetry"] >> tempVec;
-  modProps.planesOfSymmetry = glm::vec3(tempVec[0], tempVec[1], tempVec[2]);
+  modProps_.planesOfSymmetry = glm::vec3(tempVec[0], tempVec[1], tempVec[2]);
 }
 
 void CameraViewPoints::icosahedronPointsFromRadius() {

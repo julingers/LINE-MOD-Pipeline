@@ -34,18 +34,25 @@ void TemplateGenerator::cleanup() {
 
 void TemplateGenerator::run() {
   int cnt = 0;
+  // 对于每个模型文件
   for (size_t i = 0; i < modelFiles_.size(); i++) {
     camPoints_->readModelProperties(modelFolder_ + modelFiles_[i]);
     opengl_->creatModBuffFromFiles(modelFolder_ + modelFiles_[i]);
+
+    // 从startDistance_到endDistance_，以stepSize_为步长的方式，生成相机位置
     for (uint16_t radiusToModel = startDistance_; radiusToModel <= endDistance_;
          radiusToModel += stepSize_) {
+      // 获得采样后的相机位置camVertices_，以及相机位置的数量numCameraVertices_
       createCamViewPoints(radiusToModel);
+
+      // 对于每个相机位置，渲染出对应的color和depth图像，并将它们添加到line_中
       for (size_t j = 0; j < numCameraVertices_; j++) {
         printProgBar(calculateCurrentPercent(radiusToModel, j), modelFiles_[i]);
+
         std::vector<cv::Mat> images;
         renderImages(images, i, j);
-        // line->addTemplate(images, modelFiles[i], camVertices[j], &cnt);
-        line_->addTemplate(images, modelFiles_[i], camVertices_[j]);
+        line_->addTemplate(images, modelFiles_[i], camVertices_[j], &cnt);
+        // line_->addTemplate(images, modelFiles_[i], camVertices_[j]);
         cnt++;
       }
     }

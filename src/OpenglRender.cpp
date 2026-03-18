@@ -169,7 +169,7 @@ void OpenGLRender::renderDepthToFrontBuff(uint16_t in_modelIndice,
 
 void OpenGLRender::creatModBuffFromFiles(std::string const& in_modelLocation) {
   Model tmp;
-  readModelFile(in_modelLocation, tmp);
+  readModelFile(in_modelLocation, tmp); // 获取模型数据：顶点、颜色、面索引
   std::vector<glm::vec3> tempVert;
   tempVert = zipVectors(tmp.vertices, tmp.colors);
   modBuff.emplace_back(tempVert.data(), tmp.numVertices, tmp.indices.data(),

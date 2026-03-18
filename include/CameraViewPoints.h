@@ -42,7 +42,7 @@ class CameraViewPoints {
   std::vector<glm::vec3>& getVertices();
 
  private:
-  ModelProperties modProps;
+  ModelProperties modProps_;
 
   // Remove camera positions that generate an identical image for object
   void removeSuperfluousVertices();

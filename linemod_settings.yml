@@ -17,7 +17,7 @@ distortion parameters: !!opencv-matrix
 # ###### TEMPLATE GENERATION SETTINGS ######
 model folder: models/
 model file ending: ".ply"
-only use color modality: 1
+only use color modality: 0
 in plane rotation starting angle: -45
 in plane rotation stopping angle: 45
 in plane rotation angle step: 10
