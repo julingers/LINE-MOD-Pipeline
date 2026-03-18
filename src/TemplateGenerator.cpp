@@ -58,7 +58,6 @@ void TemplateGenerator::run() {
     }
     line_->pushBackTemplates();
   }
-  std::cout << "renderImages cnt(color same as depth): " << cnt << std::endl;
   line_->writeLinemod();
 }
 

@@ -104,7 +104,9 @@ bool HighLevelLineMOD::addTemplate(std::vector<cv::Mat>& in_images,
     glm::vec3 translation;
     glm::quat quaternions;
     uint16_t medianDepth = medianMat(depthRotated, boundingBox, 5);
+    // 计算当前平面的旋转角度（In-plane Rotation, 即相机围绕镜头光轴旋转）
     int16_t currentInplaneAngle = -(lowerAngleStop_ + q * angleStep_);
+    // 计算模板在opencv坐标系下的6d位姿
     calculateTemplatePose(translation, quaternions, in_cameraPosition,
                           currentInplaneAngle);
     templates_.emplace_back(translation, quaternions, boundingBox, medianDepth);
@@ -328,7 +330,7 @@ uint16_t HighLevelLineMOD::medianMat(cv::Mat const& in_mat, cv::Rect& in_bb,
     return 0;
   }
 
-  // 提取第in_medianPosition个最小的元素
+  // 提取第targetIndex分位数的值
   size_t targetIndex = vecFromMat.size() / in_medianPosition;
   std::nth_element(vecFromMat.begin(), vecFromMat.begin() + targetIndex,
                    vecFromMat.end());
@@ -339,19 +341,21 @@ void HighLevelLineMOD::calculateTemplatePose(glm::vec3& in_translation,
                                              glm::quat& in_quats,
                                              glm::vec3& in_cameraPosition,
                                              int16_t& in_inplaneRot) {
+  // 物体始终位于原点，相机绕物体旋转，因此平移向量的x和y分量为0，z分量为相机位置与原点的距离
   in_translation.x = 0.0f;
   in_translation.y = 0.0f;
   in_translation.z = glm::length(in_cameraPosition);
 
+  // 防奇异点，万向锁
   if (in_cameraPosition[0] == 0 && in_cameraPosition[2] == 0) {
     // Looking straight up or down fails the cross product
     in_cameraPosition[0] = 0.00000000001;
   }
-  glm::vec3 camUp =
-      normalize(cross(in_cameraPosition, cross(in_cameraPosition, up_)));
-  glm::vec3 rotatedUp = rotate(-camUp, glm::radians((float)in_inplaneRot),
-                               normalize(in_cameraPosition));
-  glm::mat4 view = lookAt(in_cameraPosition, glm::vec3(0.0f), rotatedUp);
+  glm::vec3 camUp = glm::normalize(
+      glm::cross(in_cameraPosition, glm::cross(in_cameraPosition, up_)));
+  glm::vec3 rotatedUp = glm::rotate(-camUp, glm::radians((float)in_inplaneRot),
+                                    glm::normalize(in_cameraPosition));
+  glm::mat4 view = glm::lookAt(in_cameraPosition, glm::vec3(0.0f), rotatedUp);
   in_quats = openglCoordinatesystem2opencv(view);
 }
 
@@ -360,8 +364,9 @@ glm::quat HighLevelLineMOD::openglCoordinatesystem2opencv(
   glm::mat4 coordinateTransform(1.0f);
   coordinateTransform[1][1] = -1.0f;
   coordinateTransform[2][2] = -1.0f;
-  glm::quat tempQuat =
-      toQuat(glm::transpose(glm::transpose(in_viewMat) * coordinateTransform));
+  // glm::quat tempQuat = glm::toQuat(coordinateTransform * in_viewMat);
+  glm::quat tempQuat = glm::toQuat(
+      glm::transpose(glm::transpose(in_viewMat) * coordinateTransform));
   return tempQuat;
 }
 
@@ -487,6 +492,7 @@ float HighLevelLineMOD::calcTrueZ(float const& in_directDist,
 }
 
 void HighLevelLineMOD::pushBackTemplates() {
+  // 将当前模型的模板添加到modelTemplates_中，并清空templates_以准备下个模型的模板生成
   modelTemplates_.push_back(templates_);
   templates_.clear();
 }
