@@ -154,16 +154,21 @@ bool HighLevelLineMOD::detectTemplate(std::vector<cv::Mat>& in_imgs,
   if (depthCheckForColorDetector) {
     in_imgs.push_back(tmpDepth);
   }
-  if (!matches_.empty()) {
-    cvtColor(in_imgs[0], colorImgHue_, cv::COLOR_BGR2HSV);
-    inRange(colorImgHue_, modProps_[in_classNumber].lowerColorRange,
-            modProps_[in_classNumber].upperColorRange, colorImgHue_);
 
+  // 处理匹配结果，类似NMS思想的分组和筛选，最后进行后处理得到物体位姿
+  if (!matches_.empty()) {
+    cv::cvtColor(in_imgs[0], colorImgHue_, cv::COLOR_BGR2HSV);
+    cv::inRange(colorImgHue_, modProps_[in_classNumber].lowerColorRange,
+                modProps_[in_classNumber].upperColorRange, colorImgHue_);
+
+    // 筛选
     groupSimilarMatches();
     discardSmallMatchGroups();
     for (auto& potentialMatch : potentialMatches_) {
       groupedMatches_ =
           elementsFromListOfIndices(matches_, potentialMatch.matchIndices);
+
+      // 后处理
       std::vector<ObjectPose> objPoses;
       applyPostProcessing(in_imgs, objPoses);
       if (!objPoses.empty()) {

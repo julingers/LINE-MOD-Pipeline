@@ -32,11 +32,13 @@ int main(int argc, char** argv) {
   tm.start();
   poseDetect.detect(imgs, "lagergehaeuse.ply", 1, objPose, true);
   tm.stop();
-  LOG(INFO) << "Detection time: " << tm.getTimeMilli() << " ms" << std::endl;
+  LOG(WARNING) << "Detection time: " << tm.getTimeMilli() << " ms" << std::endl;
 
-  cv::imshow("view depth", depth8u);
-  cv::imshow("view color", colorImg);
-  cv::waitKey(0);
+  // cv::imshow("view depth", depth8u);
+  // cv::imshow("view color", colorImg);
+  // cv::waitKey(0);
+
+  google::ShutdownGoogleLogging();
   return 0;
 
   if (0) {

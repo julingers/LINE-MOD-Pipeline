@@ -101,7 +101,6 @@ class HighLevelLineMOD {
   glm::vec3 up_ = glm::vec3(0.0f, 1.0f, 0.0f);
   int32_t tempDepth_;
 
-#pragma pack(push, 1)
   struct Template {
     Template() {}
 
@@ -116,7 +115,6 @@ class HighLevelLineMOD {
     cv::Rect boundingBox;
     uint16_t medianDepth;
   };
-#pragma pack(pop)
 
   struct PotentialMatch {
     PotentialMatch(cv::Point in_point, size_t in_indices)

@@ -2,9 +2,9 @@
 
 PoseDetection::PoseDetection() {
   readSettings(camParams_, templateSettings_);
-
   filesInDirectory(modelFiles_, templateSettings_.modelFolder,
                    templateSettings_.modelFileEnding);
+
   opengl_ = new OpenGLRender(camParams_);
   line_ = new HighLevelLineMOD(camParams_, templateSettings_);
   icp_ = new HighLevelLinemodIcp(6, 0.1f, 2.5f, 8,
@@ -44,6 +44,7 @@ void PoseDetection::detect(std::vector<cv::Mat>& in_imgs,
   colorImg_ = in_imgs[0];
   depthImg_ = in_imgs[1];
 
+  // 图像光心平移到图像中心
   cv::Mat correctedTranslationColor = colorImg_.clone();
   cv::Mat correctedTranslationDepth = depthImg_.clone();
   translateImg(correctedTranslationColor,
@@ -59,6 +60,8 @@ void PoseDetection::detect(std::vector<cv::Mat>& in_imgs,
   finalObjectPoses_.clear();
   line_->detectTemplate(inputImg_, numClassIndex);
   detectedPoses_ = line_->getObjectPoses();
+
+  // 处理检测到的位姿
   if (!detectedPoses_.empty()) {
     for (auto& detectedPose : detectedPoses_) {
       if (templateSettings_.useIcp) {
@@ -102,8 +105,12 @@ void PoseDetection::detect(std::vector<cv::Mat>& in_imgs,
     if (bench_) {
       bench_->increaseImgCounter();
     }
-    imshow("color", colorImg_);
-    cv::waitKey(1);
+    // imshow("color", colorImg_);
+    // cv::waitKey(1);
+
+    // double min, max;
+    // cv::minMaxLoc(depthImg_, &min, &max);
+    // std::cout << min << " " << max << std::endl;
   }
 
   inputImg_.clear();
@@ -121,6 +128,11 @@ uint16_t PoseDetection::findIndexInVector(
     std::vector<std::string>& in_vectorToLookIn) {
   auto ind = std::find(in_vectorToLookIn.begin(), in_vectorToLookIn.end(),
                        in_stringToFind);
+  if (ind == in_vectorToLookIn.end()) {
+    std::cerr << "ERROR: Class name '" << in_stringToFind << "' not found!"
+              << std::endl;
+    return -1;
+  }
   return std::distance(in_vectorToLookIn.begin(), ind);
 }
 
@@ -133,8 +145,11 @@ void PoseDetection::readLinemodFromFile() {
             << std::endl;
   if (!ids_.empty()) {
     std::cout << "Class ids: " << std::endl;
-    std::copy(ids_.begin(), ids_.end(),
-              std::ostream_iterator<std::string>(std::cout, "\n"));
+    // std::copy(ids_.begin(), ids_.end(),
+    //           std::ostream_iterator<std::string>(std::cout, "\n"));
+    for (const auto& id : ids_) {
+      std::cout << " - " << id << std::endl;
+    }
   }
   if (ids_ != modelFiles_) {
     std::cout

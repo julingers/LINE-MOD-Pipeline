@@ -38,8 +38,8 @@
 build/
 
 #Ignore Benchmark and model files
-detection_result.png
+*.png
 
-linemod_tempPosFile.bin
+*.bin
 
-linemod_templates.yml.gz
+*.yml.gz
