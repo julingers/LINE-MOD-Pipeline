@@ -1,18 +1,18 @@
 #include "PoseDetection.h"
 
 PoseDetection::PoseDetection() {
-  readSettings(camParams, templateSettings);
+  readSettings(camParams_, templateSettings_);
 
-  filesInDirectory(modelFiles, templateSettings.modelFolder,
-                   templateSettings.modelFileEnding);
-  opengl = new OpenGLRender(camParams);
-  line = new HighLevelLineMOD(camParams, templateSettings);
-  icp = new HighLevelLinemodIcp(6, 0.1f, 2.5f, 8,
-                                templateSettings.icpSubsamplingFactor,
-                                modelFiles, templateSettings.modelFolder);
+  filesInDirectory(modelFiles_, templateSettings_.modelFolder,
+                   templateSettings_.modelFileEnding);
+  opengl_ = new OpenGLRender(camParams_);
+  line_ = new HighLevelLineMOD(camParams_, templateSettings_);
+  icp_ = new HighLevelLinemodIcp(6, 0.1f, 2.5f, 8,
+                                 templateSettings_.icpSubsamplingFactor,
+                                 modelFiles_, templateSettings_.modelFolder);
 
-  for (const auto& modelFile : modelFiles) {
-    opengl->creatModBuffFromFiles(templateSettings.modelFolder + modelFile);
+  for (const auto& modelFile : modelFiles_) {
+    opengl_->creatModBuffFromFiles(templateSettings_.modelFolder + modelFile);
   }
   readLinemodFromFile();
 }
@@ -20,17 +20,17 @@ PoseDetection::PoseDetection() {
 PoseDetection::~PoseDetection() { cleanup(); }
 
 void PoseDetection::cleanup() {
-  if (opengl) {
-    delete opengl;
+  if (opengl_) {
+    delete opengl_;
   }
-  if (line) {
-    delete line;
+  if (line_) {
+    delete line_;
   }
-  if (icp) {
-    delete icp;
+  if (icp_) {
+    delete icp_;
   }
-  if (bench) {
-    delete bench;
+  if (bench_) {
+    delete bench_;
   }
 }
 
@@ -39,80 +39,81 @@ void PoseDetection::detect(std::vector<cv::Mat>& in_imgs,
                            uint16_t const& in_numberOfObjects,
                            std::vector<ObjectPose>& in_objPose,
                            bool in_displayResults) {
-  uint16_t numClassIndex = findIndexInVector(in_className, ids);
+  uint16_t numClassIndex = findIndexInVector(in_className, ids_);
 
-  colorImg = in_imgs[0];
-  depthImg = in_imgs[1];
+  colorImg_ = in_imgs[0];
+  depthImg_ = in_imgs[1];
 
-  cv::Mat correctedTranslationColor = colorImg.clone();
-  cv::Mat correctedTranslationDepth = depthImg.clone();
+  cv::Mat correctedTranslationColor = colorImg_.clone();
+  cv::Mat correctedTranslationDepth = depthImg_.clone();
   translateImg(correctedTranslationColor,
-               -camParams.cx + camParams.videoWidth / 2,
-               -camParams.cy + camParams.videoHeight / 2);
+               -camParams_.cx + camParams_.videoWidth / 2,
+               -camParams_.cy + camParams_.videoHeight / 2);
   translateImg(correctedTranslationDepth,
-               -camParams.cx + camParams.videoWidth / 2,
-               -camParams.cy + camParams.videoHeight / 2);
+               -camParams_.cx + camParams_.videoWidth / 2,
+               -camParams_.cy + camParams_.videoHeight / 2);
 
-  inputImg.push_back(correctedTranslationColor);
-  inputImg.push_back(correctedTranslationDepth);
+  inputImg_.push_back(correctedTranslationColor);
+  inputImg_.push_back(correctedTranslationDepth);
 
-  finalObjectPoses.clear();
-  line->detectTemplate(inputImg, numClassIndex);
-  detectedPoses = line->getObjectPoses();
-  if (!detectedPoses.empty()) {
-    for (auto& detectedPose : detectedPoses) {
-      if (templateSettings.useIcp) {
+  finalObjectPoses_.clear();
+  line_->detectTemplate(inputImg_, numClassIndex);
+  detectedPoses_ = line_->getObjectPoses();
+  if (!detectedPoses_.empty()) {
+    for (auto& detectedPose : detectedPoses_) {
+      if (templateSettings_.useIcp) {
         uint16_t bestPose = 0;
-        icp->prepareDepthForIcp(depthImg, camParams.cameraMatrix,
-                                detectedPose[0].boundingBox);
-        icp->registerToScene(detectedPose, numClassIndex);
+        icp_->prepareDepthForIcp(depthImg_, camParams_.cameraMatrix,
+                                 detectedPose[0].boundingBox);
+        icp_->registerToScene(detectedPose, numClassIndex);
         bool truePositivMatch =
-            icp->estimateBestMatch(correctedTranslationDepth, detectedPose,
-                                   opengl, numClassIndex, bestPose);
+            icp_->estimateBestMatch(correctedTranslationDepth, detectedPose,
+                                    opengl_, numClassIndex, bestPose);
         if (truePositivMatch) {
-          finalObjectPoses.push_back(detectedPose[bestPose]);
+          finalObjectPoses_.push_back(detectedPose[bestPose]);
         }
       } else {
-        finalObjectPoses.push_back(detectedPose[0]);
+        finalObjectPoses_.push_back(detectedPose[0]);
       }
-      if (finalObjectPoses.size() == in_numberOfObjects) {
+      if (finalObjectPoses_.size() == in_numberOfObjects) {
         break;
       }
     }
-    if (!finalObjectPoses.empty()) {
-      if (bench) {
+    if (!finalObjectPoses_.empty()) {
+      if (bench_) {
         float error = 1;
-        error = bench->calculateErrorHodan(correctedTranslationDepth, opengl,
-                                           finalObjectPoses[0], numClassIndex);
-        // error = bench->calculateErrorLM(finalObjectPoses[0]);
-        // error = bench->calculateErrorLMAmbigous(finalObjectPoses[0]);
+        error =
+            bench_->calculateErrorHodan(correctedTranslationDepth, opengl_,
+                                        finalObjectPoses_[0], numClassIndex);
+        // error = bench_->calculateErrorLM(finalObjectPoses_[0]);
+        // error = bench_->calculateErrorLMAmbigous(finalObjectPoses_[0]);
         std::cout << "Error: " << error << std::endl;
       }
       if (in_displayResults) {
-        for (auto& finalObjectPose : finalObjectPoses) {
+        for (auto& finalObjectPose : finalObjectPoses_) {
           in_objPose.push_back(finalObjectPose);
-          drawCoordinateSystem(colorImg, camParams.cameraMatrix, 75.0f,
+          drawCoordinateSystem(colorImg_, camParams_.cameraMatrix, 75.0f,
                                finalObjectPose);
         }
       }
     }
   }
   if (in_displayResults) {
-    if (bench) {
-      bench->increaseImgCounter();
+    if (bench_) {
+      bench_->increaseImgCounter();
     }
-    imshow("color", colorImg);
+    imshow("color", colorImg_);
     cv::waitKey(1);
   }
 
-  inputImg.clear();
+  inputImg_.clear();
 }
 
 void PoseDetection::setupBenchmark(std::string const& in_className) {
-  bench = new Benchmark;
-  uint16_t numClassIndex = findIndexInVector(in_className, ids);
-  bench->loadModel(opengl,
-                   templateSettings.modelFolder + modelFiles[numClassIndex]);
+  bench_ = new Benchmark;
+  uint16_t numClassIndex = findIndexInVector(in_className, ids_);
+  bench_->loadModel(opengl_,
+                    templateSettings_.modelFolder + modelFiles_[numClassIndex]);
 }
 
 uint16_t PoseDetection::findIndexInVector(
@@ -124,18 +125,18 @@ uint16_t PoseDetection::findIndexInVector(
 }
 
 void PoseDetection::readLinemodFromFile() {
-  line->readLinemod();
-  ids = line->getClassIds();
-  int num_classes = line->getNumClasses();
+  line_->readLinemod();
+  ids_ = line_->getClassIds();
+  int num_classes = line_->getNumClasses();
   std::cout << "Loaded with " << num_classes << " classes and "
-            << line->getNumTemplates() << " templates\n"
+            << line_->getNumTemplates() << " templates\n"
             << std::endl;
-  if (!ids.empty()) {
+  if (!ids_.empty()) {
     std::cout << "Class ids: " << std::endl;
-    std::copy(ids.begin(), ids.end(),
+    std::copy(ids_.begin(), ids_.end(),
               std::ostream_iterator<std::string>(std::cout, "\n"));
   }
-  if (ids != modelFiles) {
+  if (ids_ != modelFiles_) {
     std::cout
         << "ERROR::Models in file folder do not match with generated models!"
         << std::endl;

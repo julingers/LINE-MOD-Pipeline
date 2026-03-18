@@ -31,32 +31,17 @@ class HighLevelLineMOD {
                    TemplateGenerationSettings const& in_templateSettings);
   ~HighLevelLineMOD();
 
-  /**
-   * @brief Class Id getter
-   *
-   * @return std::vector<cv::String>
-   */
+  // Class Id getter
   std::vector<cv::String> getClassIds();
 
-  /**
-   * @brief Number of classes getter
-   *
-   * @return uint16_t
-   */
+  // Number of classes getter
   uint16_t getNumClasses();
-  /**
-   * @brief Number of Templates getter
-   *
-   * @return uint32_t
-   */
+
+  // Number of Templates getter
   uint32_t getNumTemplates();
 
   /**
    * @brief Adding a template from input images
-   *
-   * @param in_images
-   * @param in_modelName
-   * @param in_cameraPosition
    * @return true Templates correctly extracted from image
    * @return false Returns false if the templates cant be created. Usually its
    * because they are too small
@@ -67,9 +52,6 @@ class HighLevelLineMOD {
 
   /**
    * @brief Detect templates in the given images with the given class number
-   *
-   * @param in_imgs
-   * @param in_classNumber
    * @return true
    * @return false could not find a template
    */
@@ -78,57 +60,46 @@ class HighLevelLineMOD {
   /**
    * @brief Write the detecor and templates to a file called
    * "linemod_templates.yml.gz" and "linemod_tempPosFile.bin"
-   *
    */
   void writeLinemod();
 
-  /**
-   * @brief Reading the templates and the detector from the written files
-   *
-   */
+  // Reading the templates and the detector from the written files
   void readLinemod();
 
-  /**
-   * @brief Add the templates of the current class to a vector of templates
-   *
-   */
+  // Add the templates of the current class to a vector of templates
   void pushBackTemplates();
 
-  /**
-   * @brief Reading the Object Poses after detection
-   *
-   * @return std::vector<std::vector<ObjectPose>>
-   */
+  // Reading the Object Poses after detection
   std::vector<std::vector<ObjectPose>> getObjectPoses();
 
  private:
-  cv::Ptr<cv::linemod::Detector> detector;
+  cv::Ptr<cv::linemod::Detector> detector_;
 
-  bool onlyColorModality;
+  bool onlyColorModality_;
 
-  uint16_t videoWidth;
-  uint16_t videoHeight;
-  float cx;
-  float cy;
-  float fx;
-  float fy;
-  float fieldOfViewHeight;
+  uint16_t videoWidth_;
+  uint16_t videoHeight_;
+  float cx_;
+  float cy_;
+  float fx_;
+  float fy_;
+  float fieldOfViewHeight_;
 
-  std::vector<cv::Mat> inPlaneRotationMat;
-  int16_t lowerAngleStop;
-  int16_t upperAngleStop;
-  uint16_t angleStep;
-  uint16_t stepSize;
-  float detectorThreshold;
-  uint16_t percentToPassCheck;
-  uint16_t numberWantedPoses;
-  float radiusThresholdNewObject;
-  float discardGroupRatio;
-  bool useDepthImprovement;
-  float depthOffset;
+  std::vector<cv::Mat> inPlaneRotationMat_;
+  int16_t lowerAngleStop_;
+  int16_t upperAngleStop_;
+  uint16_t angleStep_;
+  uint16_t stepSize_;
+  float detectorThreshold_;
+  uint16_t percentToPassCheck_;
+  uint16_t numberWantedPoses_;
+  float radiusThresholdNewObject_;
+  float discardGroupRatio_;
+  bool useDepthImprovement_;
+  float depthOffset_;
 
-  glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
-  int32_t tempDepth;
+  glm::vec3 up_ = glm::vec3(0.0f, 1.0f, 0.0f);
+  int32_t tempDepth_;
 
   struct Template {
     Template() {}
@@ -155,22 +126,19 @@ class HighLevelLineMOD {
     std::vector<uint32_t> matchIndices;
   };
 
-  cv::Mat colorImgHue;
-  std::vector<Template> templates;
-  std::vector<std::vector<Template>> modelTemplates;
-  std::vector<std::vector<ObjectPose>> posesMultipleObj;
-  std::vector<cv::linemod::Match> matches;
-  std::vector<cv::linemod::Match> groupedMatches;
-  std::vector<PotentialMatch> potentialMatches;
-  std::vector<ModelProperties> modProps;
+  cv::Mat colorImgHue_;
+  std::vector<Template> templates_;
+  std::vector<std::vector<Template>> modelTemplates_;
+  std::vector<std::vector<ObjectPose>> posesMultipleObj_;
+  std::vector<cv::linemod::Match> matches_;
+  std::vector<cv::linemod::Match> groupedMatches_;
+  std::vector<PotentialMatch> potentialMatches_;
+  std::vector<ModelProperties> modProps_;
 
-  std::vector<std::string> modelFiles;
-  std::string modelFolder;
+  std::vector<std::string> modelFiles_;
+  std::string modelFolder_;
 
-  /**
-   * @brief Generation the matrices for image rotation
-   *
-   */
+  // Generation the matrices for image rotation
   void generateRotMatForInplaneRotation();
 
   /**
@@ -264,31 +232,15 @@ class HighLevelLineMOD {
   void calcRotation(uint32_t const& in_numMatch, glm::vec3 const& in_position,
                     glm::quat& in_quats);
 
-  /**
-   * @brief Calculate the match origin position in pixel
-   *
-   * @param in_numMatch
-   * @param[out] in_x
-   * @param[out] in_y
-   */
+  // Calculate the match origin position in pixel
   void matchToPixelCoord(uint32_t const& in_numMatch, float& in_x, float& in_y);
 
-  /**
-   * @brief Calculate the pixel distance from origin to image center
-   *
-   * @param in_x
-   * @param in_y
-   * @return float
-   */
+  // Calculate the pixel distance from origin to image center
   float pixelDistToCenter(float in_x, float in_y);
 
   /**
    * @brief Calculate the z-position of the object out of the direct distance
    * between object and camera
-   *
-   * @param in_directDist
-   * @param in_distFromCenter
-   * @return float
    */
   float calcTrueZ(float const& in_directDist, float const& in_angleFromCenter);
 
@@ -300,16 +252,12 @@ class HighLevelLineMOD {
    */
   void templateMask(cv::linemod::Match const& in_match, cv::Mat& dst);
 
-  /**
-   * @brief Sort matches with a similar position in the image into groups
-   *
-   */
+  // Sort matches with a similar position in the image into groups
   void groupSimilarMatches();
 
   /**
    * @brief Remove groups from the sorted list of matches with a low percentage
    * of elements
-   *
    */
   void discardSmallMatchGroups();
 
@@ -324,21 +272,10 @@ class HighLevelLineMOD {
       std::vector<cv::linemod::Match>& in_matches,
       const std::vector<uint32_t>& in_indices);
 
-  /**
-   * @brief Read the object color for the color check from corresponding file
-   *
-   */
+  // Read the object color for the color check from corresponding file
   void readColorRanges();
 
-  /**
-   * @brief Draws the features of a match on the image for debuging
-   *
-   * @param templates
-   * @param num_modalities
-   * @param dst
-   * @param offset
-   * @param T
-   */
+  // Draws the features of a match on the image for debuging
   void drawResponse(const std::vector<cv::linemod::Template>& templates,
                     int num_modalities, cv::Mat& dst, const cv::Point& offset,
                     int T);

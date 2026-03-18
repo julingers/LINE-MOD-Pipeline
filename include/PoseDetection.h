@@ -17,16 +17,10 @@
  */
 class PoseDetection {
  public:
-  /**
-   * @brief Construct a new Pose Detection object
-   *
-   */
   PoseDetection();
   ~PoseDetection();
-  /**
-   * @brief Function to cleanup the used classes
-   *
-   */
+
+  // Function to cleanup the used classes
   void cleanup();
 
   /**
@@ -50,26 +44,23 @@ class PoseDetection {
   void setupBenchmark(std::string const& in_className);
 
  private:
-  OpenGLRender* opengl;
-  HighLevelLineMOD* line;
-  HighLevelLinemodIcp* icp;
-  Benchmark* bench;
+  OpenGLRender* opengl_;
+  HighLevelLineMOD* line_;
+  HighLevelLinemodIcp* icp_;
+  Benchmark* bench_;
 
-  std::vector<cv::Mat> inputImg;
-  std::vector<std::vector<ObjectPose>> detectedPoses;
-  std::vector<ObjectPose> finalObjectPoses;
-  cv::Mat colorImg;
-  cv::Mat depthImg;
+  std::vector<cv::Mat> inputImg_;
+  std::vector<std::vector<ObjectPose>> detectedPoses_;
+  std::vector<ObjectPose> finalObjectPoses_;
+  cv::Mat colorImg_;
+  cv::Mat depthImg_;
 
-  CameraParameters camParams;
-  TemplateGenerationSettings templateSettings;
-  std::vector<std::string> modelFiles;
-  std::vector<cv::String> ids;
+  CameraParameters camParams_;
+  TemplateGenerationSettings templateSettings_;
+  std::vector<std::string> modelFiles_;
+  std::vector<cv::String> ids_;
 
-  /**
-   * @brief Reading the linemod file created by the template generator
-   *
-   */
+  // Reading the linemod file created by the template generator
   void readLinemodFromFile();
 
   /**
