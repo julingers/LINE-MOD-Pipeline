@@ -245,7 +245,9 @@ void HighLevelLineMOD::discardSmallMatchGroups() {
 }
 
 void HighLevelLineMOD::writeLinemod() {
-  std::string filename = "linemod_templates.yml.gz";
+  std::string posfix = onlyColorModality_ ? "color" : "color_depth";
+
+  std::string filename = "linemod_templates_" + posfix + ".yml.gz";
   cv::FileStorage fs(filename, cv::FileStorage::WRITE);
   detector_->write(fs);
 
@@ -258,7 +260,7 @@ void HighLevelLineMOD::writeLinemod() {
   }
   fs << "]";
 
-  std::ofstream templatePositionFile("linemod_tempPosFile.bin",
+  std::ofstream templatePositionFile("linemod_tempPosFile_" + posfix + ".bin",
                                      std::ios::binary | std::ios::out);
   uint32_t numTempVecs = modelTemplates_.size();
   templatePositionFile.write((char*)&numTempVecs, sizeof(uint32_t));
@@ -273,9 +275,11 @@ void HighLevelLineMOD::writeLinemod() {
 }
 
 void HighLevelLineMOD::readLinemod() {
+  std::string posfix = onlyColorModality_ ? "color" : "color_depth";
+
   templates_.clear();
   modelTemplates_.clear();
-  std::string filename = "linemod_templates.yml.gz";
+  std::string filename = "linemod_templates_" + posfix + ".yml.gz";
   cv::FileStorage fs(filename, cv::FileStorage::READ);
   detector_->read(fs.root());
 
@@ -284,8 +288,8 @@ void HighLevelLineMOD::readLinemod() {
     detector_->readClass(i);
   }
 
-  std::ifstream input =
-      std::ifstream("linemod_tempPosFile.bin", std::ios::in | std::ios::binary);
+  std::ifstream input = std::ifstream("linemod_tempPosFile_" + posfix + ".bin",
+                                      std::ios::in | std::ios::binary);
   uint32_t numTempVecs;
   input.read((char*)&numTempVecs, sizeof(uint32_t));
   for (uint32_t numTempVec = 0; numTempVec < numTempVecs; numTempVec++) {
