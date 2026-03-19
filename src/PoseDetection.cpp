@@ -94,6 +94,7 @@ void PoseDetection::detect(std::vector<cv::Mat>& in_imgs,
       }
       if (in_displayResults) {
         for (auto& finalObjectPose : finalObjectPoses_) {
+          LOG(ERROR) << "Final Object Pose: " << finalObjectPose;
           in_objPose.push_back(finalObjectPose);
           drawCoordinateSystem(colorImg_, camParams_.cameraMatrix, 75.0f,
                                finalObjectPose);
@@ -190,6 +191,8 @@ void PoseDetection::drawCoordinateSystem(cv::Mat& in_srcDstImage,
            cv::Scalar(0, 255, 0), 2);
   cv::line(in_srcDstImage, projectedPoints[0], projectedPoints[3],
            cv::Scalar(255, 0, 0), 2);
+  cv::rectangle(in_srcDstImage, in_objPos.boundingBox, cv::Scalar(0, 255, 255),
+                2);
 }
 
 cv::Mat PoseDetection::translateImg(cv::Mat& in_img, int in_offsetx,

@@ -38,6 +38,17 @@ struct ObjectPose {
   glm::vec3 translation;
   glm::quat quaternions;
   cv::Rect boundingBox;
+
+  friend std::ostream& operator<<(std::ostream& os, const ObjectPose& pose) {
+    os << "Translation: " << pose.translation.x << ", " << pose.translation.y
+       << ", " << pose.translation.z << "\n";
+    os << "Quaternions: " << pose.quaternions.x << ", " << pose.quaternions.y
+       << ", " << pose.quaternions.z << ", " << pose.quaternions.w << "\n"
+       << "Bounding Box: x=" << pose.boundingBox.x
+       << ", y=" << pose.boundingBox.y << ", width=" << pose.boundingBox.width
+       << ", height=" << pose.boundingBox.height << "\n";
+    return os;
+  }
 };
 
 struct CameraParameters {

@@ -26,8 +26,27 @@ HighLevelLineMOD::HighLevelLineMOD(
       depthOffset_(in_templateSettings.depthOffset) {
   if (!onlyColorModality_) {
     std::vector<cv::Ptr<cv::linemod::Modality>> modality;
-    modality.emplace_back(cv::makePtr<cv::linemod::ColorGradient>());
-    modality.emplace_back(cv::makePtr<cv::linemod::DepthNormal>());
+    /* brief: constructor of ColorGradient modality, which extracts features
+    based on color gradients. default params: 10, 63, 55.
+    param@ weak_threshold:
+    param@ num_features:
+    param@ strong_threshold:
+    */
+    modality.emplace_back(
+        cv::makePtr<cv::linemod::ColorGradient>());  // default params: 10, 63,
+                                                     // 55
+
+    /* brief: constructor of DepthNormal modality, which extracts features based
+    on depth and surface normals. default params: 2000, 50, 63, 2.
+    param@ distance_threshold:
+    param@ difference_threshold:
+    param@ num_features:
+    param@extract_threshold:
+    */
+    // modality.emplace_back(cv::makePtr<cv::linemod::DepthNormal>());
+    // default params: 2000, 50, 63, 2
+    modality.emplace_back(
+        cv::makePtr<cv::linemod::DepthNormal>(2000, 30, 63, 3));
 
     // 金字塔采样步长，两层，第一层步长为5，第二层步长为8
     static const int T_DEFAULTS[] = {5, 8};
@@ -101,6 +120,46 @@ bool HighLevelLineMOD::addTemplate(std::vector<cv::Mat>& in_images,
       std::cout << "ERROR::Cant create Template" << std::endl;
       return false;
     }
+
+    // debug：模态特征可视化
+    if (0) {
+      const std::vector<cv::linemod::Template>& templates =
+          detector_->getTemplates(in_modelName, template_id);
+      LOG(INFO) << "template size: " << templates.size();
+      for (size_t i = 0; i < templates.size(); i++) {
+        LOG(INFO) << "feature " << i
+                  << " size: " << templates[i].features.size();
+        if (templates[i].features.empty()) {
+          LOG(ERROR) << "template " << i << " has no features!";
+        }
+      }
+      if (!onlyColorModality_) {
+        cv::Mat colorCanvas;
+        colorCanvas = colorRotated.clone();
+
+        // cv::normalize(depthRotated.clone(), colorCanvas, 0, 255,
+        //               cv::NORM_MINMAX);
+        // colorCanvas.convertTo(colorCanvas, CV_8UC1);
+        // cv::cvtColor(colorCanvas, colorCanvas, cv::COLOR_GRAY2BGR);
+        for (const auto& f : templates[0].features) {
+          // 特征点位置是相对于boundingbox的偏移
+          cv::Point pt(f.x + boundingBox.x, f.y + boundingBox.y);
+          cv::circle(colorCanvas, pt, 1, cv::Scalar(0, 255, 0), -1);
+        }
+
+        int label0_count = 0;
+        for (const auto& f : templates[1].features) {
+          if (f.label == 0) label0_count++;
+          // 特征点位置是相对于boundingbox的偏移
+          cv::Point pt(f.x + boundingBox.x, f.y + boundingBox.y);
+          cv::circle(colorCanvas, pt, 1, cv::Scalar(0, 0, 255), -1);
+        }
+        LOG(INFO) << "depth features with label 0: " << label0_count;
+        // cv::imshow("features", colorCanvas);
+        // cv::waitKey(0);
+      }
+    }
+
     glm::vec3 translation;
     glm::quat quaternions;
     uint16_t medianDepth = medianMat(depthRotated, boundingBox, 5);
@@ -156,6 +215,7 @@ bool HighLevelLineMOD::detectTemplate(std::vector<cv::Mat>& in_imgs,
   }
 
   // 处理匹配结果，类似NMS思想的分组和筛选，最后进行后处理得到物体位姿
+  LOG(WARNING) << "matches_ size: " << matches_.size();
   if (!matches_.empty()) {
     cv::cvtColor(in_imgs[0], colorImgHue_, cv::COLOR_BGR2HSV);
     cv::inRange(colorImgHue_, modProps_[in_classNumber].lowerColorRange,

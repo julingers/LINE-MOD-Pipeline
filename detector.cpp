@@ -18,10 +18,21 @@ int main(int argc, char** argv) {
   colorImg = cv::imread(root_path + "benchmark/img0.png", cv::IMREAD_COLOR);
   depthImg =
       cv::imread(root_path + "benchmark/depth0.png", cv::IMREAD_ANYDEPTH);
+  LOG(INFO) << "depth type: " << depthImg.type();
+  cv::Rect roi(276, 246, 93, 95);
+  LOG(ERROR) << "DEPTH value(276, 246): " << depthImg.at<uint16_t>(246, 276);
 
-  cv::Mat depth8u;
+  // cv::Mat mask = cv::Mat::zeros(depthImg.size(), CV_8U);
+  // mask(roi).setTo(255);
+  // cv::Mat processedDepth(depthImg.size(), depthImg.type(),
+  // cv::Scalar(10000)); depthImg.copyTo(processedDepth, mask);
+
+  cv::Mat depth8u, color8u;
   cv::normalize(depthImg, depth8u, 0, 255, cv::NORM_MINMAX);
   depth8u.convertTo(depth8u, CV_8U);
+  cv::cvtColor(depth8u, color8u, cv::COLOR_GRAY2BGR);
+  cv::circle(color8u, cv::Point(276 + 93 * 0.5, 246 + 95 * 0.5), 5,
+             cv::Scalar(0, 0, 255), -1);
 
   std::vector<cv::Mat> imgs;
   imgs.push_back(colorImg);
@@ -34,7 +45,7 @@ int main(int argc, char** argv) {
   tm.stop();
   LOG(WARNING) << "Detection time: " << tm.getTimeMilli() << " ms" << std::endl;
 
-  // cv::imshow("view depth", depth8u);
+  cv::imshow("view depth", color8u);
   // cv::imshow("view color", colorImg);
   cv::waitKey(0);
 
