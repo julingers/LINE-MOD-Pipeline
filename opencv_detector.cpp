@@ -2,8 +2,10 @@
  * @Author: juling julinger@qq.com
  * @Date: 2026-03-11 14:18:01
  * @LastEditors: juling julinger@qq.com
- * @LastEditTime: 2026-03-17 17:29:05
+ * @LastEditTime: 2026-03-19 11:27:15
  */
+
+#include <glog/logging.h>
 
 #include <algorithm>
 #include <cmath>
@@ -19,7 +21,7 @@ struct CameraParams {
   cv::Mat cameraMatrix;
 };
 
-// 模板位姿数据（与 linemod_tempPosFile.bin 格式一致）
+// 模板位姿数据（与linemod_tempPosFile.bin格式一致）
 struct TemplatePose {
   float tx, ty, tz;        // 平移
   float qx, qy, qz, qw;    // 四元数旋转
@@ -27,7 +29,6 @@ struct TemplatePose {
   uint16_t medianDepth;    // 深度中值
 };
 
-// 检测结果
 struct DetectionResult {
   std::string classId;
   int templateId;
@@ -36,10 +37,9 @@ struct DetectionResult {
   cv::Rect boundingBox;
   // 计算后的位姿
   cv::Vec3f translation;
-  cv::Mat rotation;  // 3x3 旋转矩阵
+  cv::Mat rotation;
 };
 
-// 计算IoU
 float calculateIoU(const cv::Rect& a, const cv::Rect& b) {
   int interX1 = std::max(a.x, b.x);
   int interY1 = std::max(a.y, b.y);
@@ -56,7 +56,6 @@ float calculateIoU(const cv::Rect& a, const cv::Rect& b) {
   return interArea / unionArea;
 }
 
-// NMS过滤
 std::vector<DetectionResult> nmsFilter(std::vector<DetectionResult>& results,
                                        float iouThreshold = 0.3f,
                                        int maxResults = 10) {
@@ -97,16 +96,14 @@ std::vector<DetectionResult> nmsFilter(std::vector<DetectionResult>& results,
   return filtered;
 }
 
-// 读取相机参数
 CameraParams loadCameraParams(
     const std::string& filename = "linemod_settings.yml") {
   CameraParams params;
   cv::FileStorage fs(filename, cv::FileStorage::READ);
 
   if (!fs.isOpened()) {
-    std::cerr << "Warning: Cannot open settings file: " << filename
-              << std::endl;
-    std::cerr << "         Using default camera parameters" << std::endl;
+    LOG(ERROR) << "Cannot open settings file: " << filename
+               << ". Using default camera parameters";
     // 默认参数
     params.width = 640;
     params.height = 480;
@@ -127,28 +124,25 @@ CameraParams loadCameraParams(
   params.cameraMatrix = (cv::Mat1d(3, 3) << params.fx, 0, params.cx, 0,
                          params.fy, params.cy, 0, 0, 1);
 
-  std::cout << "Camera parameters: fx=" << params.fx << ", fy=" << params.fy
-            << ", cx=" << params.cx << ", cy=" << params.cy << std::endl;
+  LOG(INFO) << "Camera parameters: fx=" << params.fx << ", fy=" << params.fy
+            << ", cx=" << params.cx << ", cy=" << params.cy;
 
   return params;
 }
 
-// 读取模板位姿文件
 std::vector<std::vector<TemplatePose>> loadTemplatePoses(
-    const std::string& filename = "linemod_tempPosFile.bin") {
+    const std::string& filename) {
   std::vector<std::vector<TemplatePose>> modelTemplates;
 
   std::ifstream input(filename, std::ios::in | std::ios::binary);
   if (!input.is_open()) {
-    std::cerr << "Warning: Cannot open template pose file: " << filename
-              << std::endl;
+    LOG(ERROR) << "Cannot open template pose file: " << filename;
     return modelTemplates;
   }
 
   uint32_t numTempVecs;
   input.read((char*)&numTempVecs, sizeof(uint32_t));
-  std::cout << "Loading " << numTempVecs << " classes of template poses"
-            << std::endl;
+  LOG(INFO) << "Loading " << numTempVecs << " classes of template poses";
 
   for (uint32_t i = 0; i < numTempVecs; i++) {
     std::vector<TemplatePose> templates;
@@ -161,8 +155,7 @@ std::vector<std::vector<TemplatePose>> loadTemplatePoses(
       templates.push_back(tp);
     }
     modelTemplates.push_back(templates);
-    std::cout << "  Class " << i << ": " << templates.size() << " templates"
-              << std::endl;
+    LOG(INFO) << "  Class " << i << ": " << templates.size() << " templates";
   }
 
   input.close();
@@ -224,13 +217,13 @@ void computeFinalPose(DetectionResult& result, const TemplatePose& templatePose,
   float offsetY = pixelY - camParams.height / 2;
   float pixelDist = std::sqrt(offsetX * offsetX + offsetY * offsetY);
 
-  // 5. 计算真实的 Z 值（考虑透视）
+  // 5. 计算真实的Z值（考虑透视）
   float trueZ =
       std::sqrt(depth * depth - pixelDist * pixelDist * (depth / camParams.fy) *
                                     (depth / camParams.fy));
   if (std::isnan(trueZ) || trueZ < 0) trueZ = depth;
 
-  // 6. 计算 3D 平移
+  // 6. 计算3D平移
   float scale = trueZ / camParams.fy;
   float tx = (pixelX - camParams.cx) * scale;
   float ty = (pixelY - camParams.cy) * scale;
@@ -238,7 +231,7 @@ void computeFinalPose(DetectionResult& result, const TemplatePose& templatePose,
 
   result.translation = cv::Vec3f(tx, ty, tz);
 
-  // 7. 调整旋转矩阵（根据新的位置调整 look-at 方向）
+  // 7. 调整旋转矩阵（根据新的位置调整look-at方向）
   // 简化处理：直接使用模板旋转
   result.rotation = templateRot;
 }
@@ -249,9 +242,9 @@ void drawCoordinateAxis(cv::Mat& image, const CameraParams& camParams,
                         float axisLength = 50.0f) {
   std::vector<cv::Point3f> axisPoints;
   axisPoints.push_back(cv::Point3f(0, 0, 0));           // 原点
-  axisPoints.push_back(cv::Point3f(axisLength, 0, 0));  // X轴 (红)
-  axisPoints.push_back(cv::Point3f(0, axisLength, 0));  // Y轴 (绿)
-  axisPoints.push_back(cv::Point3f(0, 0, axisLength));  // Z轴 (蓝)
+  axisPoints.push_back(cv::Point3f(axisLength, 0, 0));  // X轴
+  axisPoints.push_back(cv::Point3f(0, axisLength, 0));  // Y轴
+  axisPoints.push_back(cv::Point3f(0, 0, axisLength));  // Z轴
 
   // 旋转向量
   cv::Mat rvec;
@@ -268,11 +261,11 @@ void drawCoordinateAxis(cv::Mat& image, const CameraParams& camParams,
 
   // 绘制坐标轴
   cv::line(image, projectedPoints[0], projectedPoints[1], cv::Scalar(0, 0, 255),
-           2);  // X - 红
+           2);  // X-红
   cv::line(image, projectedPoints[0], projectedPoints[2], cv::Scalar(0, 255, 0),
-           2);  // Y - 绿
+           2);  // Y-绿
   cv::line(image, projectedPoints[0], projectedPoints[3], cv::Scalar(255, 0, 0),
-           2);  // Z - 蓝
+           2);  // Z-蓝
 }
 
 cv::Ptr<cv::linemod::Detector> loadDetector(const std::string& filename) {
@@ -288,15 +281,14 @@ cv::Ptr<cv::linemod::Detector> loadDetector(const std::string& filename) {
     std::ifstream test(gzFile);
     if (test.good()) {
       actualFile = gzFile;
-      std::cout << "Using compressed file: " << gzFile << std::endl;
+      LOG(INFO) << "Using compressed file: " << gzFile;
     }
     test.close();
   }
 
   cv::FileStorage fs(actualFile, cv::FileStorage::READ);
   if (!fs.isOpened()) {
-    std::cerr << "Error: Cannot open template file: " << actualFile
-              << std::endl;
+    LOG(ERROR) << "Cannot open template file: " << actualFile;
     return nullptr;
   }
 
@@ -312,14 +304,14 @@ cv::Ptr<cv::linemod::Detector> loadDetector(const std::string& filename) {
 
   fs.release();
 
-  std::cout << "Loaded detector with:" << std::endl;
-  std::cout << "  - " << detector->numClasses() << " classes" << std::endl;
-  std::cout << "  - " << detector->numTemplates() << " templates" << std::endl;
+  LOG(INFO) << "Loaded detector with:";
+  LOG(INFO) << "  - " << detector->numClasses() << " classes";
+  LOG(INFO) << "  - " << detector->numTemplates() << " templates";
 
   std::vector<cv::String> classIds = detector->classIds();
-  std::cout << "  - Class IDs: ";
+  LOG(INFO) << "  - Class IDs: ";
   for (const auto& id : classIds) {
-    std::cout << id << " ";
+    LOG(INFO) << id << " ";
   }
   std::cout << std::endl;
 
@@ -335,27 +327,26 @@ std::vector<DetectionResult> detect(
   std::vector<DetectionResult> results;
 
   int numModalities = detector->getModalities().size();
-  std::cout << "Detector uses " << numModalities << " modalities" << std::endl;
+  LOG(INFO) << "Detector uses " << numModalities << " modalities";
 
   std::vector<cv::Mat> sources;
   sources.push_back(colorImg);
 
   if (numModalities == 2) {
     if (depthImg.empty()) {
-      std::cerr << "Error: Detector requires depth image but none provided!"
-                << std::endl;
+      LOG(ERROR) << "Error: Detector requires depth image but none provided!";
       return results;
     }
     sources.push_back(depthImg);
-    std::cout << "Using color + depth modalities" << std::endl;
+    LOG(INFO) << "Using color + depth modalities";
   } else if (numModalities == 1) {
-    std::cout << "Using color modality only" << std::endl;
+    LOG(INFO) << "Using color modality only";
   }
 
   std::vector<cv::linemod::Match> matches;
   detector->match(sources, threshold, matches);
 
-  std::cout << "Found " << matches.size() << " matches" << std::endl;
+  LOG(INFO) << "Found " << matches.size() << " matches";
 
   // 获取 class id 到索引的映射
   std::vector<cv::String> classIds = detector->classIds();
@@ -487,14 +478,9 @@ void printUsage(const char* programName) {
   std::cout << "Options:" << std::endl;
   std::cout << "  -t <threshold>   Detection threshold (default: 80.0)"
             << std::endl;
-  std::cout << "  -i <iou>         IoU threshold for NMS (default: 0.3)"
+  std::cout << "  -i <iou>         IoU threshold for NMS (default: 0.1)"
             << std::endl;
-  std::cout << "  -n <max>         Max number of results (default: 10)"
-            << std::endl;
-  std::cout << "  --no-nms         Disable NMS filtering" << std::endl;
-  std::cout << "  -d               Use depth modality (default: true)"
-            << std::endl;
-  std::cout << "  -c               Color modality only (ignore depth)"
+  std::cout << "  -n <max>         Max number of results (default: 3)"
             << std::endl;
   std::cout << "  -h               Show this help message" << std::endl;
   std::cout << std::endl;
@@ -504,11 +490,17 @@ void printUsage(const char* programName) {
       << " linemod_templates.yml.gz benchmark/img0.png benchmark/depth0.png"
       << std::endl;
   std::cout << "  " << programName
-            << " -t 70 -i 0.5 -n 5 linemod_templates.yml benchmark/img0.png"
+            << " -t 70 -i 0.5 linemod_templates.yml benchmark/img0.png"
             << std::endl;
 }
 
 int main(int argc, char** argv) {
+  google::InitGoogleLogging(argv[0]);
+  google::InstallFailureSignalHandler();
+  FLAGS_logtostderr = true;
+  FLAGS_colorlogtostderr = true;
+  FLAGS_logbufsecs = 0;
+
   std::cout << "Usage: " << argv[0]
             << " <template.yml> <color_image> [depth_image]" << std::endl;
   std::string templateFile;
@@ -516,9 +508,7 @@ int main(int argc, char** argv) {
   std::string depthFile;
   float threshold = 80.0f;
   float iouThreshold = 0.1f;
-  int maxResults = 1;
-  bool useNms = true;
-  bool useDepth = true;
+  int maxResults = 3;
 
   int argIdx = 1;
   while (argIdx < argc) {
@@ -540,15 +530,6 @@ int main(int argc, char** argv) {
       if (argIdx + 1 < argc) {
         maxResults = std::stoi(argv[++argIdx]);
       }
-      argIdx++;
-    } else if (arg == "--no-nms") {
-      useNms = false;
-      argIdx++;
-    } else if (arg == "-c") {
-      useDepth = false;
-      argIdx++;
-    } else if (arg == "-d") {
-      useDepth = true;
       argIdx++;
     } else if (arg[0] != '-') {
       if (templateFile.empty()) {
@@ -572,8 +553,9 @@ int main(int argc, char** argv) {
     printUsage(argv[0]);
     return -1;
   }
+  bool useDepth = !depthFile.empty();
 
-  std::cout << "===== OpenCV LINE-MOD Detector =====" << std::endl;
+  std::cout << "\n===== OpenCV LINE-MOD Detector =====" << std::endl;
   std::cout << "Template file: " << templateFile << std::endl;
   std::cout << "Color image: " << colorFile << std::endl;
   if (!depthFile.empty()) {
@@ -581,28 +563,21 @@ int main(int argc, char** argv) {
   }
   std::cout << "Threshold: " << threshold << std::endl;
   std::cout << "Use depth: " << (useDepth ? "yes" : "no") << std::endl;
-  std::cout << "NMS: " << (useNms ? "enabled" : "disabled");
-  if (useNms) {
-    std::cout << " (IoU=" << iouThreshold << ", max=" << maxResults << ")";
-  }
-  std::cout << std::endl << std::endl;
+  std::cout << "NMS: " << "enabled";
+  std::cout << " (IoU=" << iouThreshold << ", MaxResults: " << maxResults << ")"
+            << std::endl;
+  std::cout << "===== OpenCV LINE-MOD Detector =====\n" << std::endl;
 
-  // 加载相机参数
   CameraParams camParams = loadCameraParams();
-
-  // 加载模板位姿
-  std::vector<std::vector<TemplatePose>> templatePoses = loadTemplatePoses();
-
-  std::cout << "Loading detector..." << std::endl;
   cv::Ptr<cv::linemod::Detector> detector = loadDetector(templateFile);
   if (!detector) {
+    LOG(ERROR) << "Failed to load detector!";
     return -1;
   }
 
-  std::cout << "Loading images..." << std::endl;
   cv::Mat colorImg = cv::imread(colorFile, cv::IMREAD_COLOR);
   if (colorImg.empty()) {
-    std::cerr << "Error: Cannot load color image: " << colorFile << std::endl;
+    LOG(ERROR) << "Cannot load color image: " << colorFile;
     return -1;
   }
 
@@ -610,36 +585,34 @@ int main(int argc, char** argv) {
   if (!depthFile.empty()) {
     depthImg = cv::imread(depthFile, cv::IMREAD_ANYDEPTH);
     if (depthImg.empty()) {
-      std::cerr << "Warning: Cannot load depth image: " << depthFile
-                << std::endl;
-      std::cerr << "         Continuing without depth..." << std::endl;
+      LOG(WARNING) << "Cannot load depth image: " << depthFile
+                   << ". Continuing without depth...";
     }
   }
 
-  std::cout << "Color image size: " << colorImg.cols << "x" << colorImg.rows
-            << std::endl;
+  LOG(INFO) << "Color image size: " << colorImg.cols << "x" << colorImg.rows;
   if (!depthImg.empty()) {
-    std::cout << "Depth image size: " << depthImg.cols << "x" << depthImg.rows
-              << std::endl;
+    LOG(INFO) << "Depth image size: " << depthImg.cols << "x" << depthImg.rows;
   }
-  std::cout << std::endl;
 
-  std::cout << "Running detection..." << std::endl;
   cv::TickMeter tm;
   tm.start();
 
+  std::string postfix = !useDepth ? "_color" : "_color_depth";
+  std::string tmp_pose_file = "linemod_tempPosFile" + postfix + ".bin";
+  std::vector<std::vector<TemplatePose>> templatePoses =
+      loadTemplatePoses(tmp_pose_file);
   std::vector<DetectionResult> results =
       detect(detector, colorImg, depthImg, templatePoses, camParams, threshold,
              useDepth);
 
   tm.stop();
-  std::cout << "Detection time: " << tm.getTimeMilli() << " ms" << std::endl;
+  LOG(WARNING) << "Detection time: " << tm.getTimeMilli() << " ms";
 
-  if (useNms && !results.empty()) {
+  if (!results.empty()) {
     size_t beforeNms = results.size();
     results = nmsFilter(results, iouThreshold, maxResults);
-    std::cout << "NMS: " << beforeNms << " -> " << results.size() << " results"
-              << std::endl;
+    LOG(INFO) << "NMS: " << beforeNms << " -> " << results.size() << " results";
   }
 
   std::cout << std::endl;
@@ -662,7 +635,7 @@ int main(int argc, char** argv) {
     }
     std::cout << std::endl;
   } else {
-    std::cout << "No matches found!" << std::endl;
+    LOG(ERROR) << "No matches found!";
   }
 
   cv::Mat resultImg = colorImg.clone();
@@ -670,13 +643,11 @@ int main(int argc, char** argv) {
 
   cv::namedWindow("LINE-MOD Detection Result", cv::WINDOW_AUTOSIZE);
   cv::imshow("LINE-MOD Detection Result", resultImg);
-
-  std::cout << "Press any key to exit..." << std::endl;
   cv::waitKey(0);
 
   std::string outputFile = "detection_result.png";
   cv::imwrite(outputFile, resultImg);
-  std::cout << "Result saved to: " << outputFile << std::endl;
+  LOG(INFO) << "Result saved to: " << outputFile;
 
   return 0;
 }

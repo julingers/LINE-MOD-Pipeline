@@ -36,7 +36,7 @@ int main(int argc, char** argv) {
 
   // cv::imshow("view depth", depth8u);
   // cv::imshow("view color", colorImg);
-  // cv::waitKey(0);
+  cv::waitKey(0);
 
   google::ShutdownGoogleLogging();
   return 0;

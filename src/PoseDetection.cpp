@@ -105,8 +105,8 @@ void PoseDetection::detect(std::vector<cv::Mat>& in_imgs,
     if (bench_) {
       bench_->increaseImgCounter();
     }
-    // imshow("color", colorImg_);
-    // cv::waitKey(1);
+    cv::imshow("color", colorImg_);
+    cv::waitKey(1);
 
     // double min, max;
     // cv::minMaxLoc(depthImg_, &min, &max);
