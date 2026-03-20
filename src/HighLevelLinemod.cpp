@@ -26,30 +26,13 @@ HighLevelLineMOD::HighLevelLineMOD(
       depthOffset_(in_templateSettings.depthOffset) {
   if (!onlyColorModality_) {
     std::vector<cv::Ptr<cv::linemod::Modality>> modality;
-    /* brief: constructor of ColorGradient modality, which extracts features
-    based on color gradients. default params: 10, 63, 55.
-    param@ weak_threshold:
-    param@ num_features:
-    param@ strong_threshold:
-    */
-    modality.emplace_back(
-        cv::makePtr<cv::linemod::ColorGradient>());  // default params: 10, 63,
-                                                     // 55
-
-    /* brief: constructor of DepthNormal modality, which extracts features based
-    on depth and surface normals. default params: 2000, 50, 63, 2.
-    param@ distance_threshold:
-    param@ difference_threshold:
-    param@ num_features:
-    param@extract_threshold:
-    */
-    // modality.emplace_back(cv::makePtr<cv::linemod::DepthNormal>());
-    // default params: 2000, 50, 63, 2
-    modality.emplace_back(
-        cv::makePtr<cv::linemod::DepthNormal>(2000, 30, 63, 3));
+    // default Constructor Params: 10, 63, 55
+    modality.emplace_back(cv::makePtr<cv::linemod::ColorGradient>());
+    // default Constructor Params: 2000, 50, 63, 2
+    modality.emplace_back(cv::makePtr<cv::linemod::DepthNormal>());
 
     // 金字塔采样步长，两层，第一层步长为5，第二层步长为8
-    static const int T_DEFAULTS[] = {5, 8};
+    static const int T_DEFAULTS[] = {2, 8};
     detector_ = cv::makePtr<cv::linemod::Detector>(
         modality, std::vector<int>(T_DEFAULTS, T_DEFAULTS + 2));
   } else {
@@ -78,8 +61,7 @@ uint32_t HighLevelLineMOD::getNumTemplates() {
 
 bool HighLevelLineMOD::addTemplate(std::vector<cv::Mat>& in_images,
                                    const std::string& in_modelName,
-                                   glm::vec3 in_cameraPosition,
-                                   int* image_idx) {
+                                   glm::vec3 in_cameraPosition) {
   cv::Mat mask, maskRotated;
   std::vector<cv::Mat> templateImgs;
   cv::Mat colorRotated, depthRotated, colorToBinary;
@@ -90,27 +72,30 @@ bool HighLevelLineMOD::addTemplate(std::vector<cv::Mat>& in_images,
   int cnt = 0;
   for (size_t q = 0; q < inPlaneRotationMat_.size(); q++) {
     cv::warpAffine(mask, maskRotated, inPlaneRotationMat_[q],
-                   maskRotated.size());
+                   maskRotated.size(), cv::INTER_NEAREST);
     cv::warpAffine(colorToBinary, colorRotated, inPlaneRotationMat_[q],
                    colorToBinary.size());
     cv::warpAffine(in_images[1], depthRotated, inPlaneRotationMat_[q],
-                   in_images[1].size());
-    if (image_idx != nullptr) {
-      cv::imwrite("/mnt/hgfs/data/develop/linemod/render_images/color" +
-                      std::to_string(*image_idx) + "_" + std::to_string(cnt) +
-                      ".bmp",
-                  colorRotated);
-      cv::imwrite("/mnt/hgfs/data/develop/linemod/render_images/depth" +
-                      std::to_string(*image_idx) + "_" + std::to_string(cnt) +
-                      ".bmp",
-                  depthRotated);
-      cnt++;
-    }
+                   in_images[1].size(), cv::INTER_NEAREST);
+    depthRotated.setTo(0, maskRotated == 0);
+
+    // LOG(ERROR) << "images[0].type(): " << in_images[0].type()
+    //            << ", colorToBinary.type(): " << colorToBinary.type()
+    //            << ", colorRotated.type(): " << colorRotated.type()
+    //            << ",in_images[1].type(): " << in_images[1].type()
+    //            << ", depthRotated.type(): " << depthRotated.type()
+    //            << ", maskRotated.type(): " << maskRotated.type();
+    // double minv, maxv;
+    // cv::minMaxLoc(depthRotated, &minv, &maxv);
+    // LOG(ERROR) << "depth range: " << minv << " ~ " << maxv;
+    // cv::imwrite("/mnt/hgfs/data/depthRotated.png", depthRotated);
+    // cv::imwrite("/mnt/hgfs/data/maskRotated.png", maskRotated);
+
     templateImgs.push_back(colorRotated);
     if (!onlyColorModality_) {
       templateImgs.push_back(depthRotated);
     }
-    cv::erode(maskRotated, maskRotated, cv::Mat(), cv::Point(-1, -1), 1);
+    // cv::erode(maskRotated, maskRotated, cv::Mat(), cv::Point(-1, -1), 1);
     cv::Rect boundingBox;
     uint64_t template_id = detector_->addTemplate(templateImgs, in_modelName,
                                                   maskRotated, &boundingBox);
@@ -205,9 +190,12 @@ bool HighLevelLineMOD::detectTemplate(std::vector<cv::Mat>& in_imgs,
   const std::vector<std::string> currentClass(
       1, detector_->classIds()[in_classNumber]);
   if (onlyColorModality_ && in_imgs.size() == 2) {
+    LOG(INFO) << "Only using color modality.";
     tmpDepth = in_imgs[1];
     in_imgs.pop_back();
     depthCheckForColorDetector = true;
+  } else {
+    LOG(INFO) << "Using color and depth modality.";
   }
   detector_->match(in_imgs, detectorThreshold_, matches_, currentClass);
   if (depthCheckForColorDetector) {
@@ -224,6 +212,7 @@ bool HighLevelLineMOD::detectTemplate(std::vector<cv::Mat>& in_imgs,
     // 筛选
     groupSimilarMatches();
     discardSmallMatchGroups();
+    LOG(WARNING) << "potentialMatches_ size: " << potentialMatches_.size();
     for (auto& potentialMatch : potentialMatches_) {
       groupedMatches_ =
           elementsFromListOfIndices(matches_, potentialMatch.matchIndices);
@@ -236,6 +225,7 @@ bool HighLevelLineMOD::detectTemplate(std::vector<cv::Mat>& in_imgs,
       }
     }
 
+    LOG(WARNING) << "posesMultipleObj_ size: " << posesMultipleObj_.size();
     // DRAW FEATURES OF BEST LINEMOD MATCH
     if (!posesMultipleObj_.empty()) {
       for (auto& potentialMatch : potentialMatches_) {
@@ -598,7 +588,7 @@ void HighLevelLineMOD::drawResponse(
     cv::Scalar color = COLORS[m];
     for (const auto f : templates[m].features) {
       const cv::Point pt(f.x + offset.x, f.y + offset.y);
-      circle(dst, pt, T / 2, color);
+      cv::circle(dst, pt, T / 2, color);
     }
   }
 }

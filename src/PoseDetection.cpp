@@ -58,8 +58,13 @@ void PoseDetection::detect(std::vector<cv::Mat>& in_imgs,
   inputImg_.push_back(correctedTranslationDepth);
 
   finalObjectPoses_.clear();
-  line_->detectTemplate(inputImg_, numClassIndex);
+  if (!line_->detectTemplate(inputImg_, numClassIndex)) {
+    LOG(ERROR) << "No template detected for class '" << in_className << "'!";
+    return;
+  }
   detectedPoses_ = line_->getObjectPoses();
+  LOG(INFO) << "Detected " << detectedPoses_.size() << " poses for class '"
+            << in_className << "'!";
 
   // 处理检测到的位姿
   if (!detectedPoses_.empty()) {
@@ -94,7 +99,7 @@ void PoseDetection::detect(std::vector<cv::Mat>& in_imgs,
       }
       if (in_displayResults) {
         for (auto& finalObjectPose : finalObjectPoses_) {
-          LOG(ERROR) << "Final Object Pose: " << finalObjectPose;
+          LOG(INFO) << "Final Object Pose: " << finalObjectPose;
           in_objPose.push_back(finalObjectPose);
           drawCoordinateSystem(colorImg_, camParams_.cameraMatrix, 75.0f,
                                finalObjectPose);
@@ -102,6 +107,7 @@ void PoseDetection::detect(std::vector<cv::Mat>& in_imgs,
       }
     }
   }
+
   if (in_displayResults) {
     if (bench_) {
       bench_->increaseImgCounter();

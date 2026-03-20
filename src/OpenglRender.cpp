@@ -1,6 +1,8 @@
 #include "OpenglRender.h"
 
-OpenGLRender::OpenGLRender(CameraParameters const& in_camParams) {
+OpenGLRender::OpenGLRender(CameraParameters const& in_camParams,
+                           bool in_showWindow) {
+  showWindow = in_showWindow;
   width = in_camParams.videoWidth;
   height = in_camParams.videoHeight;
   cx = in_camParams.cx;
@@ -169,7 +171,7 @@ void OpenGLRender::renderDepthToFrontBuff(uint16_t in_modelIndice,
 
 void OpenGLRender::creatModBuffFromFiles(std::string const& in_modelLocation) {
   Model tmp;
-  readModelFile(in_modelLocation, tmp); // 获取模型数据：顶点、颜色、面索引
+  readModelFile(in_modelLocation, tmp);  // 获取模型数据：顶点、颜色、面索引
   std::vector<glm::vec3> tempVert;
   tempVert = zipVectors(tmp.vertices, tmp.colors);
   modBuff.emplace_back(tempVert.data(), tmp.numVertices, tmp.indices.data(),
@@ -196,6 +198,9 @@ void OpenGLRender::setupSDLWindow() {
   SDL_GL_SetSwapInterval(0);
 
   uint32_t flags = SDL_WINDOW_OPENGL;
+  if (!showWindow) {
+    flags |= SDL_WINDOW_HIDDEN;
+  }
   window = SDL_CreateWindow("Render Window", SDL_WINDOWPOS_CENTERED,
                             SDL_WINDOWPOS_CENTERED, width, height, flags);
   SDL_GLContext glContext = SDL_GL_CreateContext(window);  // 创建OpenGL上下文

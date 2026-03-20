@@ -50,8 +50,7 @@ class HighLevelLineMOD {
    * because they are too small
    */
   bool addTemplate(std::vector<cv::Mat>& in_images,
-                   const std::string& in_modelName, glm::vec3 in_cameraPosition,
-                   int* image_idx = nullptr);
+                   const std::string& in_modelName, glm::vec3 in_cameraPosition);
 
   /**
    * @brief Detect templates in the given images with the given class number

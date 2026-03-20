@@ -30,7 +30,8 @@ class OpenGLRender {
    *
    * @param in_camParams The camera paramters from the settings file
    */
-  OpenGLRender(CameraParameters const& in_camParams);
+  OpenGLRender(CameraParameters const& in_camParams,
+               bool in_showWindow = false);
   ~OpenGLRender();
 
   /**
@@ -119,6 +120,7 @@ class OpenGLRender {
   GLuint modelViewProjMatrixLocationDepth;
   float cx;
   float cy;
+  bool showWindow;
 
   /**
    * @brief Setting up the opengl context

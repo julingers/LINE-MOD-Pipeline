@@ -12,7 +12,7 @@ TemplateGenerator::TemplateGenerator() {
   stepSize_ = templateSettings.stepSize;
   subdivisions_ = templateSettings.subdivisions;
 
-  opengl_ = new OpenGLRender(camParams);
+  opengl_ = new OpenGLRender(camParams, true);
   line_ = new HighLevelLineMOD(camParams, templateSettings);
   camPoints_ = new CameraViewPoints();
   filesInDirectory(modelFiles_, modelFolder_, templateSettings.modelFileEnding);
@@ -51,7 +51,6 @@ void TemplateGenerator::run() {
 
         std::vector<cv::Mat> images;
         renderImages(images, i, j);
-        // line_->addTemplate(images, modelFiles_[i], camVertices_[j], &cnt);
         line_->addTemplate(images, modelFiles_[i], camVertices_[j]);
         cnt++;
       }

@@ -18,14 +18,9 @@ int main(int argc, char** argv) {
   colorImg = cv::imread(root_path + "benchmark/img0.png", cv::IMREAD_COLOR);
   depthImg =
       cv::imread(root_path + "benchmark/depth0.png", cv::IMREAD_ANYDEPTH);
-  LOG(INFO) << "depth type: " << depthImg.type();
-  cv::Rect roi(276, 246, 93, 95);
-  LOG(ERROR) << "DEPTH value(276, 246): " << depthImg.at<uint16_t>(246, 276);
-
-  // cv::Mat mask = cv::Mat::zeros(depthImg.size(), CV_8U);
-  // mask(roi).setTo(255);
-  // cv::Mat processedDepth(depthImg.size(), depthImg.type(),
-  // cv::Scalar(10000)); depthImg.copyTo(processedDepth, mask);
+  // LOG(INFO) << "depth type: " << depthImg.type();
+  // cv::Rect roi(276, 246, 93, 95);
+  // LOG(ERROR) << "DEPTH value(276, 246): " << depthImg.at<uint16_t>(246, 276);
 
   cv::Mat depth8u, color8u;
   cv::normalize(depthImg, depth8u, 0, 255, cv::NORM_MINMAX);
@@ -45,7 +40,7 @@ int main(int argc, char** argv) {
   tm.stop();
   LOG(WARNING) << "Detection time: " << tm.getTimeMilli() << " ms" << std::endl;
 
-  cv::imshow("view depth", color8u);
+  // cv::imshow("view depth", color8u);
   // cv::imshow("view color", colorImg);
   cv::waitKey(0);
 
