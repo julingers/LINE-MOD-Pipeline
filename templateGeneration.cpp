@@ -1,7 +1,6 @@
 #include "TemplateGenerator.h"
 
-int main()
-{
-	TemplateGenerator templateGen;
-	templateGen.run();
+int main() {
+  TemplateGenerator templateGen;
+  templateGen.run();
 }

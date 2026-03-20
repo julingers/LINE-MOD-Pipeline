@@ -1,47 +1,46 @@
 #include "PoseDetection.h"
 
-int main()
-{
-	PoseDetection poseDetect;
+int main() {
+  PoseDetection poseDetect;
 
-	poseDetect.setupBenchmark("lagergehaeuse.ply"); //Uncomment if Benchmark is not wanted
+  poseDetect.setupBenchmark(
+      "lagergehaeuse.ply");  // Uncomment if Benchmark is not wanted
 
-	int counter = 0;
+  int counter = 0;
 
-	///////IMAGE SOURCES:
-	cv::VideoCapture sequence("benchmark/img%0d.png");
-	//cv::VideoCapture sequence("benchmarkLINEMOD/color%0d.jpg");
-	//Kinect2 kin2;
-	/////////////////////
+  ///////IMAGE SOURCES:
+  cv::VideoCapture sequence("benchmark/img%0d.png");
+  // cv::VideoCapture sequence("benchmarkLINEMOD/color%0d.jpg");
+  // Kinect2 kin2;
+  /////////////////////
 
-	while (true)
-	{
-		std::vector<cv::Mat> imgs;
-		cv::Mat colorImg;
-		cv::Mat depthImg;
+  while (true) {
+    std::vector<cv::Mat> imgs;
+    cv::Mat colorImg;
+    cv::Mat depthImg;
 
-		///////IMAGE SOURCES:
-		sequence >> colorImg;
-		depthImg = cv::imread("benchmark/depth" + std::to_string(counter) + ".png",
-		                      cv::IMREAD_ANYDEPTH);
-		//Video Capture does not work with 16bit png on linux
-		//depthImg = loadDepthLineModDataset("benchmarkLINEMOD/depth" + std::to_string(counter) + ".dpt");
-		//kin2.getKinectFrames(colorImg, depthImg);
-		////////////////////
+    ///////IMAGE SOURCES:
+    sequence >> colorImg;
+    depthImg = cv::imread("benchmark/depth" + std::to_string(counter) + ".png",
+                          cv::IMREAD_ANYDEPTH);
+    // Video Capture does not work with 16bit png on linux
+    // depthImg = loadDepthLineModDataset("benchmarkLINEMOD/depth" +
+    // std::to_string(counter) + ".dpt"); kin2.getKinectFrames(colorImg,
+    // depthImg);
+    ////////////////////
 
-		if (colorImg.empty() || depthImg.empty())
-		{
-			std::cout << "End of Sequence" << std::endl;
-			cv::waitKey(0);
-			break;
-		}
+    if (colorImg.empty() || depthImg.empty()) {
+      std::cout << "End of Sequence" << std::endl;
+      cv::waitKey(0);
+      break;
+    }
 
-		imgs.push_back(colorImg);
-		imgs.push_back(depthImg);
+    imgs.push_back(colorImg);
+    imgs.push_back(depthImg);
 
-		std::vector<ObjectPose> objPose;
-		poseDetect.detect(imgs, "lagergehaeuse.ply", 1, objPose, true);
+    std::vector<ObjectPose> objPose;
+    poseDetect.detect(imgs, "lagergehaeuse.ply", 1, objPose, true);
 
-		counter++;
-	}
+    counter++;
+  }
 }

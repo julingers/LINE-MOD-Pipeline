@@ -1,91 +1,84 @@
 #pragma once
 
 #include <cstdint>
-#include <string>
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>
 #include <opencv2/core.hpp>
+#include <string>
 
-struct Index
-{
-	uint32_t a;
-	uint32_t b;
-	uint32_t c;
+struct Index {
+  uint32_t a;
+  uint32_t b;
+  uint32_t c;
 };
 
-struct Model
-{
-	uint64_t numVertices;
-	uint64_t numIndices;
-	std::vector<glm::vec3> vertices;
-	std::vector<glm::vec3> colors;
-	std::vector<uint32_t> indices;
+struct Model {
+  uint64_t numVertices;
+  uint64_t numIndices;
+  std::vector<glm::vec3> vertices;
+  std::vector<glm::vec3> colors;
+  std::vector<uint32_t> indices;
 };
 
-struct TemplatePosition
-{
-	TemplatePosition();
-	TemplatePosition(std::string in_s, glm::vec3 in_v, float in_rotation, cv::Rect in_boundingBox,
-	                 uint16_t in_depthAtCenter);
-	std::string modelName;
-	glm::vec3 positionCam;
-	float rotation;
-	cv::Rect boundingBox;
-	uint32_t depthAtCenter;
+struct TemplatePosition {
+  TemplatePosition();
+  TemplatePosition(std::string in_s, glm::vec3 in_v, float in_rotation,
+                   cv::Rect in_boundingBox, uint16_t in_depthAtCenter);
+  std::string modelName;
+  glm::vec3 positionCam;
+  float rotation;
+  cv::Rect boundingBox;
+  uint32_t depthAtCenter;
 };
 
-struct ObjectPose
-{
-	ObjectPose();
-	ObjectPose(glm::vec3 tra, glm::quat qua);
-	ObjectPose(glm::vec3 tra, glm::quat qua, cv::Rect bb);
-	glm::vec3 translation;
-	glm::quat quaternions;
-	cv::Rect boundingBox;
+struct ObjectPose {
+  ObjectPose();
+  ObjectPose(glm::vec3 tra, glm::quat qua);
+  ObjectPose(glm::vec3 tra, glm::quat qua, cv::Rect bb);
+  glm::vec3 translation;
+  glm::quat quaternions;
+  cv::Rect boundingBox;
 };
 
-struct CameraParameters
-{
-	float fx;
-	float fy;
-	float cx;
-	float cy;
-	cv::Mat cameraMatrix;
-	uint16_t videoWidth;
-	uint16_t videoHeight;
-	cv::Mat distortionCoefficients;
+struct CameraParameters {
+  float fx;
+  float fy;
+  float cx;
+  float cy;
+  cv::Mat cameraMatrix;
+  uint16_t videoWidth;
+  uint16_t videoHeight;
+  cv::Mat distortionCoefficients;
 };
 
-struct TemplateGenerationSettings
-{
-	std::string modelFileEnding;
-	std::string modelFolder;
+struct TemplateGenerationSettings {
+  std::string modelFileEnding;
+  std::string modelFolder;
 
-	bool onlyUseColorModality;
+  bool onlyUseColorModality;
 
-	uint16_t startDistance;
-	uint16_t endDistance;
-	uint16_t stepSize;
-	uint8_t subdivisions;
-	int16_t angleStart;
-	int16_t angleStop;
-	int16_t angleStep;
+  uint16_t startDistance;
+  uint16_t endDistance;
+  uint16_t stepSize;
+  uint8_t subdivisions;
+  int16_t angleStart;
+  int16_t angleStop;
+  int16_t angleStep;
 
-	float detectorThreshold;
-	uint16_t percentToPassCheck;
-	uint16_t numberWantedPoses;
-	float radiusThresholdNewObject;
-	float discardGroupRatio;
-	bool useDepthImprovement;
-	float depthOffset;
-	bool useIcp;
-	uint16_t icpSubsamplingFactor;
+  float detectorThreshold;
+  uint16_t percentToPassCheck;
+  uint16_t numberWantedPoses;
+  float radiusThresholdNewObject;
+  float discardGroupRatio;
+  bool useDepthImprovement;
+  float depthOffset;
+  bool useIcp;
+  uint16_t icpSubsamplingFactor;
 };
 
-struct ModelProperties
-{
-	cv::Scalar lowerColorRange;
-	cv::Scalar upperColorRange;
-	bool rotationallySymmetrical;
-	glm::vec3 planesOfSymmetry;
+struct ModelProperties {
+  cv::Scalar lowerColorRange;
+  cv::Scalar upperColorRange;
+  bool rotationallySymmetrical;
+  glm::vec3 planesOfSymmetry;
 };
