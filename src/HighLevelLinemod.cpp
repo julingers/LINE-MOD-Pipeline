@@ -322,15 +322,22 @@ bool HighLevelLineMOD::detectTemplate(std::vector<cv::Mat>& in_imgs,
     cv::inRange(colorImgHue_, modProps_[in_classNumber].lowerColorRange,
                 modProps_[in_classNumber].upperColorRange, colorImgHue_);
 
-    // 筛选
+    // 聚类分组
     groupSimilarMatches();
     if (enable_visualization) {
       auto img_show = visualizeMatchGroups(in_imgs[0], matches_,
                                            potentialMatches_, detector_);
-      cv::imshow("after groupSimilarMatches", img_show);
+      cv::imshow("after groupSimilarMatches visualization", img_show);
+      cv::waitKey(1);
+    }
+    // 过滤小簇
+    discardSmallMatchGroups();
+    if (enable_visualization) {
+      auto img_show = visualizeMatchGroups(in_imgs[0], matches_,
+                                           potentialMatches_, detector_);
+      cv::imshow("after discardSmallMatchGroups visualization", img_show);
       cv::waitKey(0);
     }
-    discardSmallMatchGroups();
 
     LOG(WARNING) << "potentialMatches_ size: " << potentialMatches_.size();
     for (auto& potentialMatch : potentialMatches_) {
