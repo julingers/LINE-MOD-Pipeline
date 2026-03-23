@@ -1,5 +1,5 @@
 #include "HighLevelLinemod.h"
-
+namespace hlm {
 HighLevelLineMOD::HighLevelLineMOD(
     CameraParameters const& in_camParams,
     TemplateGenerationSettings const& in_templateSettings)
@@ -180,8 +180,109 @@ void HighLevelLineMOD::templateMask(cv::linemod::Match const& in_match,
   cv::fillPoly(dst, &hull_pts, &hull_count, 1, cv::Scalar(255));
 }
 
+static cv::Mat visualizeMatches(
+    const cv::Mat& in_img, const std::vector<cv::linemod::Match>& matches,
+    const cv::Ptr<cv::linemod::Detector>& detector) {
+  cv::Scalar colors[] = {
+      cv::Scalar(0, 255, 0),    // 绿色
+      cv::Scalar(0, 0, 255),    // 红色
+      cv::Scalar(255, 0, 0),    // 蓝色
+      cv::Scalar(0, 255, 255),  // 黄色
+      cv::Scalar(255, 0, 255),  // 紫色
+  };
+
+  int colorIdx = 0;
+  cv::Mat img_show = in_img.clone();
+
+  for (const auto& match : matches) {
+    const auto templates =
+        detector->getTemplates(match.class_id, match.template_id);
+    if (templates.empty()) continue;
+
+    const auto& t = templates[0];
+
+    int minX = INT_MAX, minY = INT_MAX;
+    int maxX = INT_MIN, maxY = INT_MIN;
+    for (const auto& f : t.features) {
+      minX = std::min(minX, (int)f.x);
+      minY = std::min(minY, (int)f.y);
+      maxX = std::max(maxX, (int)f.x);
+      maxY = std::max(maxY, (int)f.y);
+    }
+    cv::Rect box(match.x + minX, match.y + minY, maxX - minX + 1,
+                 maxY - minY + 1);
+
+    box &= cv::Rect(0, 0, img_show.cols, img_show.rows);
+    if (box.area() <= 0) continue;
+
+    cv::Scalar color = colors[colorIdx++ % 5];
+    cv::rectangle(img_show, box, color, 2);
+
+    std::ostringstream oss;
+    oss << std::fixed << std::setprecision(1) << match.similarity;
+    std::string label = oss.str();
+
+    int baseline = 0;
+    double fontScale = 0.5;
+    int thickness = 1;
+    cv::Size textSize = cv::getTextSize(label, cv::FONT_HERSHEY_SIMPLEX,
+                                        fontScale, thickness, &baseline);
+    int textX = box.x;
+    int textY = std::max(box.y - 5, textSize.height + 2);
+
+    cv::rectangle(img_show, cv::Point(textX, textY - textSize.height - 2),
+                  cv::Point(textX + textSize.width, textY + baseline), color,
+                  cv::FILLED);
+    cv::putText(img_show, label, cv::Point(textX, textY),
+                cv::FONT_HERSHEY_SIMPLEX, fontScale, cv::Scalar(255, 255, 255),
+                thickness);
+  }
+
+  return img_show;
+}
+
+static cv::Mat visualizeMatchGroups(
+    const cv::Mat& in_img, const std::vector<cv::linemod::Match>& matches,
+    const std::vector<PotentialMatch>& groups,
+    const cv::Ptr<cv::linemod::Detector>& detector) {
+  cv::Mat img_show = in_img.clone();
+  cv::Scalar colors[] = {cv::Scalar(0, 255, 0),   cv::Scalar(0, 0, 255),
+                         cv::Scalar(255, 0, 0),   cv::Scalar(0, 255, 255),
+                         cv::Scalar(255, 0, 255), cv::Scalar(128, 128, 0),
+                         cv::Scalar(0, 128, 128)};
+
+  int colorIdx = 0;
+  for (const auto& group : groups) {
+    cv::Scalar color = colors[colorIdx++ % 7];
+
+    for (uint32_t idx : group.matchIndices) {
+      const auto& match = matches[idx];
+      const auto templates =
+          detector->getTemplates(match.class_id, match.template_id);
+      if (templates.empty()) continue;
+      const auto& t = templates[0];
+
+      int minX = INT_MAX, minY = INT_MAX;
+      int maxX = INT_MIN, maxY = INT_MIN;
+      for (const auto& f : t.features) {
+        minX = std::min(minX, (int)f.x);
+        minY = std::min(minY, (int)f.y);
+        maxX = std::max(maxX, (int)f.x);
+        maxY = std::max(maxY, (int)f.y);
+      }
+      cv::Rect box(match.x + minX, match.y + minY, maxX - minX + 1,
+                   maxY - minY + 1);
+      box &= cv::Rect(0, 0, img_show.cols, img_show.rows);
+      cv::rectangle(img_show, box, color, 2);
+      cv::circle(img_show, group.position, 3, color, cv::FILLED);
+    }
+  }
+  return img_show;
+}
+
 bool HighLevelLineMOD::detectTemplate(std::vector<cv::Mat>& in_imgs,
-                                      uint16_t in_classNumber) {
+                                      uint16_t in_classNumber,
+                                      bool enable_visualization) {
   templates_ = modelTemplates_[in_classNumber];
   posesMultipleObj_.clear();
   cv::Mat tmpDepth;
@@ -204,54 +305,12 @@ bool HighLevelLineMOD::detectTemplate(std::vector<cv::Mat>& in_imgs,
 
   // 处理匹配结果，类似NMS思想的分组和筛选，最后进行后处理得到物体位姿
   LOG(WARNING) << "matches_ size: " << matches_.size();
+
   if (!matches_.empty()) {
-    // 接口结果可视化
-    if (1) {
-      cv::Scalar colors[] = {
-          cv::Scalar(0, 255, 0),    // 绿色
-          cv::Scalar(0, 0, 255),    // 红色
-          cv::Scalar(255, 0, 0),    // 蓝色
-          cv::Scalar(0, 255, 255),  // 黄色
-          cv::Scalar(255, 0, 255),  // 紫色
-      };
-      int colorIdx = 0;
-      cv::Mat color_img_show = in_imgs[0].clone();
-      for (auto& match : matches_) {
-        std::vector<cv::linemod::Template> templates =
-            detector_->getTemplates(match.class_id, match.template_id);
-        if (!templates.empty()) {
-          const auto& t = templates[0];
-          int minX = INT_MAX, minY = INT_MAX;
-          int maxX = INT_MIN, maxY = INT_MIN;
-          for (const auto& f : t.features) {
-            minX = std::min(minX, (int)f.x);
-            minY = std::min(minY, (int)f.y);
-            maxX = std::max(maxX, (int)f.x);
-            maxY = std::max(maxY, (int)f.y);
-          }
-          auto boundingBox = cv::Rect(match.x + minX, match.y + minY,
-                                      maxX - minX + 1, maxY - minY + 1);
-
-          cv::Scalar color = colors[colorIdx % 5];
-          colorIdx++;
-          cv::rectangle(color_img_show, boundingBox, color, 2);
-
-          std::ostringstream oss;
-          // oss << "T: " << match.template_id << ", S: " << std::fixed
-          //     << std::setprecision(1) << match.similarity;
-          oss << std::fixed << std::setprecision(1) << match.similarity;
-          std::string label = oss.str();
-
-          int baseline = 0;
-          cv::Size textSize = cv::getTextSize(label, cv::FONT_HERSHEY_SIMPLEX,
-                                              0.5, 1, &baseline);
-          cv::Point textOrg(boundingBox.x, boundingBox.y - 5);
-          cv::putText(color_img_show, label, textOrg, cv::FONT_HERSHEY_SIMPLEX,
-                      0.5, color, 1);
-        }
-      }  // end for iterating matches
-      cv::imshow("matches visualization", color_img_show);
-      cv::waitKey(0);
+    if (enable_visualization) {
+      auto img_show = visualizeMatches(in_imgs[0], matches_, detector_);
+      cv::imshow("initial matches visualization", img_show);
+      cv::waitKey(1);
     }
 
     cv::cvtColor(in_imgs[0], colorImgHue_, cv::COLOR_BGR2HSV);
@@ -260,7 +319,14 @@ bool HighLevelLineMOD::detectTemplate(std::vector<cv::Mat>& in_imgs,
 
     // 筛选
     groupSimilarMatches();
+    if (enable_visualization) {
+      auto img_show = visualizeMatchGroups(in_imgs[0], matches_,
+                                           potentialMatches_, detector_);
+      cv::imshow("after groupSimilarMatches", img_show);
+      cv::waitKey(0);
+    }
     discardSmallMatchGroups();
+
     LOG(WARNING) << "potentialMatches_ size: " << potentialMatches_.size();
     for (auto& potentialMatch : potentialMatches_) {
       groupedMatches_ =
@@ -323,6 +389,8 @@ void HighLevelLineMOD::groupSimilarMatches() {
                                      i);
     }
   }
+  LOG(WARNING) << "potentialMatches_ size after groupSimilarMatches: "
+               << potentialMatches_.size();
 }
 
 // 按规模过滤小簇
@@ -643,3 +711,4 @@ void HighLevelLineMOD::drawResponse(
     }
   }
 }
+}  // namespace hlm

@@ -21,6 +21,32 @@
  * @brief Class wraps template generation and detection. Builds on the opencv
  * linemod class
  */
+namespace hlm {
+struct Template {
+  Template() {}
+
+  Template(glm::vec3 tra, glm::quat qua, cv::Rect bb, uint16_t med)
+      : translation(tra),
+        quaternions(qua),
+        boundingBox(std::move(bb)),
+        medianDepth(med) {}
+
+  glm::vec3 translation;
+  glm::quat quaternions;
+  cv::Rect boundingBox;
+  uint16_t medianDepth;
+};
+
+struct PotentialMatch {
+  PotentialMatch(cv::Point in_point, size_t in_indices)
+      : position(std::move(in_point)) {
+    matchIndices.push_back(in_indices);
+  }
+
+  cv::Point position;
+  std::vector<uint32_t> matchIndices;
+};
+
 class HighLevelLineMOD {
  public:
   /**
@@ -50,14 +76,16 @@ class HighLevelLineMOD {
    * because they are too small
    */
   bool addTemplate(std::vector<cv::Mat>& in_images,
-                   const std::string& in_modelName, glm::vec3 in_cameraPosition);
+                   const std::string& in_modelName,
+                   glm::vec3 in_cameraPosition);
 
   /**
    * @brief Detect templates in the given images with the given class number
    * @return true
    * @return false could not find a template
    */
-  bool detectTemplate(std::vector<cv::Mat>& in_imgs, uint16_t in_classNumber);
+  bool detectTemplate(std::vector<cv::Mat>& in_imgs, uint16_t in_classNumber,
+                      bool enable_visualization = false);
 
   /**
    * @brief Write the detecor and templates to a file called
@@ -102,31 +130,6 @@ class HighLevelLineMOD {
 
   glm::vec3 up_ = glm::vec3(0.0f, 1.0f, 0.0f);
   int32_t tempDepth_;
-
-  struct Template {
-    Template() {}
-
-    Template(glm::vec3 tra, glm::quat qua, cv::Rect bb, uint16_t med)
-        : translation(tra),
-          quaternions(qua),
-          boundingBox(std::move(bb)),
-          medianDepth(med) {}
-
-    glm::vec3 translation;
-    glm::quat quaternions;
-    cv::Rect boundingBox;
-    uint16_t medianDepth;
-  };
-
-  struct PotentialMatch {
-    PotentialMatch(cv::Point in_point, size_t in_indices)
-        : position(std::move(in_point)) {
-      matchIndices.push_back(in_indices);
-    }
-
-    cv::Point position;
-    std::vector<uint32_t> matchIndices;
-  };
 
   cv::Mat colorImgHue_;
   std::vector<Template> templates_;
@@ -282,3 +285,4 @@ class HighLevelLineMOD {
                     int num_modalities, cv::Mat& dst, const cv::Point& offset,
                     int T);
 };
+}  // namespace hlm

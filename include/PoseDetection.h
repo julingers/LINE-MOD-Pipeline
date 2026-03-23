@@ -11,6 +11,7 @@
 #include "OpenglRender.h"
 #include "utility.h"
 
+namespace hlm {
 /**
  * @brief High level class for the detection process
  *
@@ -96,3 +97,4 @@ class PoseDetection {
    */
   cv::Mat translateImg(cv::Mat& in_img, int in_offsetx, int in_offsety);
 };
+}  // namespace hlm

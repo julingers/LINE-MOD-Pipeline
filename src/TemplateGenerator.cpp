@@ -2,6 +2,7 @@
 
 #include <opencv2/imgcodecs.hpp>
 
+namespace hlm {
 TemplateGenerator::TemplateGenerator() {
   CameraParameters camParams;
   TemplateGenerationSettings templateSettings;
@@ -148,3 +149,4 @@ void TemplateGenerator::writeSettings() {
   fs << "distance step" << temp.stepSize;
   fs << "icosahedron subdivisions" << temp.subdivisions;
 }
+}  // namespace hlm

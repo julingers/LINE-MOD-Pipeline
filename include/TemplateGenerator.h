@@ -8,6 +8,7 @@
 #include "defines.h"
 #include "utility.h"
 
+namespace hlm {
 /**
  * @brief High level class covering the template generation
  *
@@ -70,3 +71,4 @@ class TemplateGenerator {
   // Create a yaml settings file
   void writeSettings();
 };
+}  // namespace hlm

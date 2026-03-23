@@ -1,5 +1,5 @@
 #include "PoseDetection.h"
-
+namespace hlm {
 PoseDetection::PoseDetection() {
   readSettings(camParams_, templateSettings_);
   filesInDirectory(modelFiles_, templateSettings_.modelFolder,
@@ -58,7 +58,7 @@ void PoseDetection::detect(std::vector<cv::Mat>& in_imgs,
   inputImg_.push_back(correctedTranslationDepth);
 
   finalObjectPoses_.clear();
-  if (!line_->detectTemplate(inputImg_, numClassIndex)) {
+  if (!line_->detectTemplate(inputImg_, numClassIndex, in_displayResults)) {
     LOG(ERROR) << "No template detected for class '" << in_className << "'!";
     return;
   }
@@ -208,3 +208,4 @@ cv::Mat PoseDetection::translateImg(cv::Mat& in_img, int in_offsetx,
   cv::warpAffine(in_img, in_img, trans_mat, in_img.size());
   return in_img;
 }
+}  // namespace hlm

@@ -2,6 +2,7 @@
 
 #include "PoseDetection.h"
 
+using namespace hlm;
 int main(int argc, char** argv) {
   google::InitGoogleLogging(argv[0]);
   google::InstallFailureSignalHandler();
