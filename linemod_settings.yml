@@ -26,7 +26,7 @@ distance stop: 1200
 distance step: 50
 icosahedron subdivisions: 3
 # ###### TEMPLATE DETECTOR SETTINGS ######
-detector threshold: 75
+detector threshold: 76
 percent to pass check: 50
 number of poses to compare: 1
 distance to match to be considered same object: 45
