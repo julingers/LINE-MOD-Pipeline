@@ -2,7 +2,7 @@
  * @Author: juling julinger@qq.com
  * @Date: 2026-03-23 11:25:14
  * @LastEditors: juling julinger@qq.com
- * @LastEditTime: 2026-03-23 14:09:00
+ * @LastEditTime: 2026-03-23 15:18:22
 -->
 >note: Line-Mod源码理解，基于opencv4.2.0+opencv_contrib，位于rgbd子模块。
 
@@ -384,4 +384,4 @@ Ptr<Detector> getDefaultLINEMOD()
 }
 ```
 
-
+## 2. 部分函数解读
