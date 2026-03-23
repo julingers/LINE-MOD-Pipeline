@@ -183,17 +183,10 @@ void HighLevelLineMOD::templateMask(cv::linemod::Match const& in_match,
 static cv::Mat visualizeMatches(
     const cv::Mat& in_img, const std::vector<cv::linemod::Match>& matches,
     const cv::Ptr<cv::linemod::Detector>& detector) {
-  cv::Scalar colors[] = {
-      cv::Scalar(0, 255, 0),    // 绿色
-      cv::Scalar(0, 0, 255),    // 红色
-      cv::Scalar(255, 0, 0),    // 蓝色
-      cv::Scalar(0, 255, 255),  // 黄色
-      cv::Scalar(255, 0, 255),  // 紫色
-  };
-
-  int colorIdx = 0;
   cv::Mat img_show = in_img.clone();
 
+  std::mt19937 rng(12345);
+  std::uniform_int_distribution<int> dist(0, 255);
   for (const auto& match : matches) {
     const auto templates =
         detector->getTemplates(match.class_id, match.template_id);
@@ -215,7 +208,7 @@ static cv::Mat visualizeMatches(
     box &= cv::Rect(0, 0, img_show.cols, img_show.rows);
     if (box.area() <= 0) continue;
 
-    cv::Scalar color = colors[colorIdx++ % 5];
+    cv::Scalar color = cv::Scalar(dist(rng), dist(rng), dist(rng));
     cv::rectangle(img_show, box, color, 2);
 
     std::ostringstream oss;
@@ -241,19 +234,31 @@ static cv::Mat visualizeMatches(
   return img_show;
 }
 
+static cv::Scalar hsv2bgr(float h, float s = 1.0f, float v = 1.0f) {
+  // H: 0-180、 S,V: 0-255
+  cv::Mat hsv(1, 1, CV_32FC3, cv::Scalar(h * 180, s * 255, v * 255));
+  cv::Mat bgr;
+  hsv.convertTo(hsv, CV_8UC3);
+  cv::cvtColor(hsv, bgr, cv::COLOR_HSV2BGR);
+  cv::Vec3b c = bgr.at<cv::Vec3b>(0, 0);
+  return cv::Scalar(c[0], c[1], c[2]);  // BGR
+}
+
 static cv::Mat visualizeMatchGroups(
     const cv::Mat& in_img, const std::vector<cv::linemod::Match>& matches,
     const std::vector<PotentialMatch>& groups,
     const cv::Ptr<cv::linemod::Detector>& detector) {
   cv::Mat img_show = in_img.clone();
-  cv::Scalar colors[] = {cv::Scalar(0, 255, 0),   cv::Scalar(0, 0, 255),
-                         cv::Scalar(255, 0, 0),   cv::Scalar(0, 255, 255),
-                         cv::Scalar(255, 0, 255), cv::Scalar(128, 128, 0),
-                         cv::Scalar(0, 128, 128)};
+  size_t nGroups = groups.size();
+  std::vector<cv::Scalar> groupColors;
+  for (size_t i = 0; i < nGroups; ++i) {
+    float hue = float(i) / nGroups;  // 均匀分布在0~1
+    groupColors.push_back(hsv2bgr(hue));
+  }
 
-  int colorIdx = 0;
-  for (const auto& group : groups) {
-    cv::Scalar color = colors[colorIdx++ % 7];
+  for (size_t i = 0; i < nGroups; ++i) {
+    const auto& group = groups[i];
+    cv::Scalar color = groupColors[i];
 
     for (uint32_t idx : group.matchIndices) {
       const auto& match = matches[idx];
